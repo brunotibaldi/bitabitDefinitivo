@@ -10,7 +10,7 @@ import { questions, subjects } from '@/lib/db/schema'
 import { displayStreak, getProfileStats } from '@/lib/game/queries'
 import { requireUser } from '@/lib/session'
 
-export const metadata: Metadata = { title: 'Perfil — Bitácora' }
+export const metadata: Metadata = { title: 'Perfil — Bit a Bit' }
 export const dynamic = 'force-dynamic'
 
 export default async function PerfilPage() {

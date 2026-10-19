@@ -5,6 +5,7 @@ import {
   jsonb,
   pgTable,
   serial,
+  smallint,
   text,
   timestamp,
 } from 'drizzle-orm/pg-core'
@@ -72,6 +73,7 @@ export const profiles = pgTable('profiles', {
   lastActiveDate: date('last_active_date'),
   streakFreezes: integer('streak_freezes').notNull().default(0),
   combo: integer('combo').notNull().default(0),
+  role: text('role').$type<'user' | 'admin'>().notNull().default('user'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
@@ -93,8 +95,23 @@ export const exams = pgTable('exams', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
-export type QuestionType = 'mcq' | 'true_false'
-export type QuestionStatus = 'approved' | 'rejected' | 'flagged'
+export const QUESTION_TYPES = [
+  'mcq',
+  'true_false',
+  'fill_blank',
+  'definition',
+  'intruder',
+  'proof_gap',
+  'code_output',
+  'order',
+] as const
+export type QuestionType = (typeof QUESTION_TYPES)[number]
+export type QuestionStatus = 'approved' | 'rejected' | 'flagged' | 'pending'
+export type QuestionContext = {
+  term?: string
+  code?: string
+  lines?: string[]
+}
 
 export const questions = pgTable('questions', {
   id: serial('id').primaryKey(),
@@ -109,6 +126,19 @@ export const questions = pgTable('questions', {
   topic: text('topic'),
   status: text('status').$type<QuestionStatus>().notNull().default('approved'),
   reportCount: integer('report_count').notNull().default(0),
+  context: jsonb('context').$type<QuestionContext>(),
+  answerOrder: jsonb('answer_order').$type<number[]>(),
+  authorId: text('author_id'),
+  upvotes: integer('upvotes').notNull().default(0),
+  downvotes: integer('downvotes').notNull().default(0),
+  reviewedAt: timestamp('reviewed_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+})
+
+export const questionVotes = pgTable('question_votes', {
+  userId: text('user_id').notNull(),
+  questionId: integer('question_id').notNull(),
+  value: smallint('value').notNull(),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
@@ -120,6 +150,7 @@ export const answers = pgTable('answers', {
   isCorrect: boolean('is_correct').notNull(),
   points: integer('points').notNull().default(0),
   isDaily: boolean('is_daily').notNull().default(false),
+  selectedOrder: jsonb('selected_order').$type<number[]>(),
   localDate: date('local_date').notNull(),
   answeredAt: timestamp('answered_at').notNull().defaultNow(),
 })
@@ -150,5 +181,9 @@ export const questionReports = pgTable('question_reports', {
   questionId: integer('question_id').notNull(),
   userId: text('user_id').notNull(),
   reason: text('reason'),
+  category: text('category'),
+  message: text('message'),
+  status: text('status').$type<'open' | 'resolved'>().notNull().default('open'),
+  resolvedAt: timestamp('resolved_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })

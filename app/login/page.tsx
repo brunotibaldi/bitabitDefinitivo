@@ -4,7 +4,7 @@ import { AuthForm } from '@/components/auth-form'
 import { AuthShell } from '@/components/auth-shell'
 import { getSession } from '@/lib/session'
 
-export const metadata: Metadata = { title: 'Entrar — Bitácora' }
+export const metadata: Metadata = { title: 'Entrar — Bit a Bit' }
 
 export default async function LoginPage() {
   const session = await getSession()

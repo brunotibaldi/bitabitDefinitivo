@@ -8,7 +8,7 @@ import { getDailyDebate } from '@/lib/game/queries'
 import { requireUser } from '@/lib/session'
 import { cn } from '@/lib/utils'
 
-export const metadata: Metadata = { title: 'Pregunta del día — Bitácora' }
+export const metadata: Metadata = { title: 'Pregunta del día — Bit a Bit' }
 export const dynamic = 'force-dynamic'
 
 export default async function HoyPage() {

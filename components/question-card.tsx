@@ -1,65 +1,111 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
-import { AnimatePresence, motion } from 'motion/react'
-import { Check, Flag, Flame, X, Zap } from 'lucide-react'
-import { reportQuestion, submitAnswer } from '@/app/actions/game'
+import { useMemo, useState, useTransition } from 'react'
+import { Check, Flame, RotateCcw, X, Zap } from 'lucide-react'
+import { submitAnswer } from '@/app/actions/game'
 import type { PublicQuestion } from '@/lib/game/queries'
+import { TYPE_META } from '@/lib/game/question-input'
+import { sfx } from '@/lib/sfx'
 import { cn } from '@/lib/utils'
+import { BlankPrompt, QuestionContextView } from './game/question-context'
+import { PixelBurst } from './game/pixel-burst'
+import { ReportButton } from './game/report-dialog'
+import { VoteBar } from './game/vote-bar'
 import { MathText } from './math-text'
 import { useStats } from './stats-provider'
-import { subjectColor } from './user-avatar'
 
 export type Revealed = {
   selectedIndex: number
+  selectedOrder?: number[] | null
   correctIndex: number
+  correctOrder?: number[] | null
   isCorrect: boolean
   explanation: string
   points: number
   comboBonus?: number
+  combo?: number
   streakExtended?: boolean
 }
 
-const LETTERS = ['A', 'B', 'C', 'D']
+const QUADS = [
+  { bg: 'bg-game-red', text: 'text-game-red', key: 'A' },
+  { bg: 'bg-game-blue', text: 'text-game-blue', key: 'B' },
+  { bg: 'bg-game-yellow', text: 'text-game-yellow', key: 'C' },
+  { bg: 'bg-game-green', text: 'text-game-green', key: 'D' },
+] as const
+
+const TYPE_COLOR: Record<string, string> = {
+  mcq: 'bg-game-blue',
+  true_false: 'bg-game-green',
+  fill_blank: 'bg-game-yellow',
+  definition: 'bg-game-blue',
+  intruder: 'bg-game-red',
+  proof_gap: 'bg-game-yellow',
+  code_output: 'bg-game-green',
+  order: 'bg-game-red',
+}
+
+function seededShuffle(n: number, seed: number) {
+  const idx = Array.from({ length: n }, (_, i) => i)
+  let s = seed * 9301 + 49297
+  for (let i = n - 1; i > 0; i--) {
+    s = (s * 9301 + 49297) % 233280
+    const j = Math.floor((s / 233280) * (i + 1))
+    ;[idx[i], idx[j]] = [idx[j], idx[i]]
+  }
+  if (idx.every((v, i) => v === i) && n > 1) idx.reverse()
+  return idx
+}
 
 export function QuestionCard({
   question,
   isDaily = false,
-  initial,
-  footer,
+  initial = null,
 }: {
   question: PublicQuestion
   isDaily?: boolean
   initial?: Revealed | null
-  footer?: React.ReactNode
 }) {
-  const stats = useStats()
-  const router = useRouter()
-  const [revealed, setRevealed] = useState<Revealed | null>(initial ?? null)
-  const [pendingIndex, setPendingIndex] = useState<number | null>(null)
+  const [revealed, setRevealed] = useState<Revealed | null>(initial)
+  const [pick, setPick] = useState<number | null>(null)
+  const [order, setOrder] = useState<number[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [reported, setReported] = useState(false)
   const [isPending, startTransition] = useTransition()
+  const stats = useStats()
+  const meta = TYPE_META[question.type]
 
-  function choose(index: number) {
-    if (revealed || isPending) return
-    setPendingIndex(index)
+  const displayOrder = useMemo(
+    () => (question.type === 'order' ? seededShuffle(question.options.length, question.id) : []),
+    [question.type, question.options.length, question.id],
+  )
+
+  function send(selectedIndex: number, selectedOrder?: number[]) {
     setError(null)
     startTransition(async () => {
-      const res = await submitAnswer({ questionId: question.id, selectedIndex: index, isDaily })
-      setPendingIndex(null)
+      const res = await submitAnswer({ questionId: question.id, selectedIndex, selectedOrder, isDaily })
       if (!res.ok) {
         setError(res.error)
+        setPick(null)
         return
       }
+      if (res.isCorrect) {
+        sfx.correct()
+        setTimeout(sfx.coin, 320)
+        if (res.comboBonus > 0) setTimeout(sfx.combo, 650)
+      } else {
+        sfx.wrong()
+      }
+      if (res.streakExtended) setTimeout(sfx.streak, res.comboBonus > 0 ? 1400 : 800)
       setRevealed({
-        selectedIndex: index,
+        selectedIndex,
+        selectedOrder: selectedOrder ?? null,
         correctIndex: res.correctIndex,
+        correctOrder: res.correctOrder,
         isCorrect: res.isCorrect,
         explanation: res.explanation,
         points: res.points,
         comboBonus: res.comboBonus,
+        combo: res.combo,
         streakExtended: res.streakExtended,
       })
       stats.apply({
@@ -70,159 +116,328 @@ export function QuestionCard({
         ...(isDaily ? { dailyDone: true } : {}),
         ...(res.streakExtended ? { streakDoneToday: true } : {}),
       })
-      if (isDaily) router.refresh()
     })
   }
 
-  function report() {
-    setReported(true)
-    startTransition(() => reportQuestion(question.id, 'user_report'))
+  function choose(i: number) {
+    if (revealed || isPending) return
+    sfx.select()
+    setPick(i)
+    send(i)
   }
 
-  const color = subjectColor(question.subjectColor)
+  const filled =
+    revealed && (question.type === 'fill_blank' || question.type === 'proof_gap')
+      ? question.options[revealed.correctIndex]
+      : null
 
   return (
     <article
-      className="relative flex w-full flex-col gap-6 rounded-3xl border bg-card p-5 shadow-2xl shadow-background/50 sm:p-7"
+      className={cn(
+        'pixel-box relative flex w-full flex-col bg-card',
+        revealed && !initial && (revealed.isCorrect ? 'animate-flash' : 'animate-shake'),
+      )}
       aria-label={`Pregunta de ${question.subjectName}`}
     >
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2 font-mono text-xs">
-          <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: color }} aria-hidden="true" />
-          <span className="truncate font-semibold uppercase tracking-wider" style={{ color }}>
-            {question.subjectShort}
+      <header className="flex items-center justify-between gap-2 border-b-3 border-ink bg-ink/40 px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className={cn('shrink-0 border-2 border-ink px-1.5 py-1 font-pixel text-[8px] text-ink', TYPE_COLOR[question.type])}>
+            {meta.short}
           </span>
-          {question.topic && (
-            <span className="truncate text-muted-foreground">
-              {'/ '}
-              {question.topic}
-            </span>
-          )}
+          <span className="truncate text-xs font-bold uppercase tracking-wide text-muted-foreground" title={question.subjectName}>
+            {question.subjectShort}
+            {question.topic && <span className="font-normal normal-case"> · {question.topic}</span>}
+          </span>
         </div>
-        <div className="flex shrink-0 items-center gap-1" aria-label={`Dificultad ${question.difficulty} de 3`}>
-          {[1, 2, 3].map((d) => (
-            <span
-              key={d}
-              className={cn('h-1.5 w-3 rounded-full', d <= question.difficulty ? 'bg-foreground/70' : 'bg-muted')}
-            />
-          ))}
+        <div className="flex shrink-0 items-center gap-2">
+          {isDaily && <span className="animate-bob font-pixel text-[8px] text-primary">x2 PTS</span>}
+          <span className="flex gap-0.5" aria-label={`Dificultad ${question.difficulty} de 3`}>
+            {[1, 2, 3].map((d) => (
+              <span
+                key={d}
+                className={cn('size-2.5 border-2 border-ink', d <= question.difficulty ? 'bg-game-red' : 'bg-secondary')}
+              />
+            ))}
+          </span>
         </div>
       </header>
 
-      <h2 className="text-pretty text-xl font-semibold leading-snug sm:text-2xl">
-        <MathText text={question.prompt} />
-      </h2>
+      <div className="flex flex-col gap-4 p-4 sm:p-5">
+        <p className="text-pretty text-lg font-bold leading-snug sm:text-xl">
+          {question.type === 'fill_blank' ? (
+            <BlankPrompt prompt={question.prompt} filled={filled} />
+          ) : (
+            <MathText text={question.prompt} />
+          )}
+        </p>
 
-      <div
-        role="group"
-        aria-label="Opciones"
-        className={cn('grid gap-2.5', question.type === 'true_false' && 'grid-cols-2')}
-      >
-        {question.options.map((opt, i) => {
-          const isCorrect = revealed?.correctIndex === i
-          const isWrongPick = revealed && revealed.selectedIndex === i && !revealed.isCorrect
-          const dimmed = revealed && !isCorrect && !isWrongPick
-          return (
-            <button
-              key={i}
-              type="button"
-              disabled={!!revealed || isPending}
-              onClick={() => choose(i)}
-              aria-pressed={revealed?.selectedIndex === i}
-              className={cn(
-                'group flex min-h-14 items-center gap-3 rounded-2xl border bg-secondary/60 px-4 py-3 text-left text-base leading-relaxed transition-all',
-                !revealed && 'hover:-translate-y-0.5 hover:border-primary/50 hover:bg-accent active:translate-y-0',
-                pendingIndex === i && 'animate-pulse border-primary/60',
-                isCorrect && 'border-primary bg-primary/15 text-foreground',
-                isWrongPick && 'border-destructive bg-destructive/15',
-                dimmed && 'opacity-45',
-                question.type === 'true_false' && 'justify-center text-center font-semibold',
-              )}
-            >
-              {question.type !== 'true_false' && (
-                <span
-                  className={cn(
-                    'flex size-7 shrink-0 items-center justify-center rounded-lg border font-mono text-xs font-semibold text-muted-foreground',
-                    isCorrect && 'border-primary bg-primary text-primary-foreground',
-                    isWrongPick && 'border-destructive bg-destructive text-destructive-foreground',
-                  )}
-                  aria-hidden="true"
-                >
-                  {isCorrect ? <Check className="size-4" /> : isWrongPick ? <X className="size-4" /> : LETTERS[i]}
-                </span>
-              )}
-              <MathText text={opt} />
-            </button>
-          )
-        })}
+        <QuestionContextView type={question.type} context={question.context} filled={filled} />
+
+        {question.type === 'order' ? (
+          <OrderBoard
+            options={question.options}
+            displayOrder={displayOrder}
+            order={revealed?.selectedOrder ?? order}
+            correctOrder={revealed?.correctOrder ?? null}
+            locked={!!revealed || isPending}
+            onToggle={(i) => {
+              sfx.tap()
+              setOrder((o) => (o.includes(i) ? o.filter((x) => x !== i) : [...o, i]))
+            }}
+            onReset={() => setOrder([])}
+            onSubmit={() => send(0, order)}
+            isPending={isPending}
+          />
+        ) : (
+          <AnswerGrid
+            type={question.type}
+            options={question.options}
+            pick={revealed?.selectedIndex ?? pick}
+            correctIndex={revealed?.correctIndex ?? null}
+            disabled={!!revealed || isPending}
+            onChoose={choose}
+          />
+        )}
+
+        {error && (
+          <p role="alert" className="text-sm text-game-red">
+            {error}
+          </p>
+        )}
+
+        {revealed && <ResultPanel revealed={revealed} animate={!initial} />}
       </div>
 
-      {error && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
-
-      <AnimatePresence>
-        {revealed && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-            className="flex flex-col gap-3"
-            aria-live="polite"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={cn(
-                  'rounded-full px-3 py-1 text-sm font-semibold',
-                  revealed.isCorrect ? 'bg-primary text-primary-foreground' : 'bg-destructive/20 text-destructive',
-                )}
-              >
-                {revealed.isCorrect ? '¡Correcto!' : 'Casi'}
-              </span>
-              {revealed.points > 0 && (
-                <motion.span
-                  initial={{ scale: 0.6, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-                  className="font-mono text-sm font-semibold text-primary"
-                >
-                  +{revealed.points} pts
-                </motion.span>
-              )}
-              {!!revealed.comboBonus && (
-                <span className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 font-mono text-xs font-semibold text-primary">
-                  <Zap className="size-3.5" aria-hidden="true" />
-                  Combo x5 +{revealed.comboBonus}
-                </span>
-              )}
-              {revealed.streakExtended && (
-                <span className="flex items-center gap-1 rounded-full bg-streak/15 px-2.5 py-1 font-mono text-xs font-semibold text-streak">
-                  <Flame className="size-3.5 fill-streak" aria-hidden="true" />
-                  Racha: {stats.streak} {stats.streak === 1 ? 'día' : 'días'}
-                </span>
-              )}
-            </div>
-            <p className="text-pretty leading-relaxed text-muted-foreground">
-              <MathText text={revealed.explanation} />
-            </p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <footer className="flex items-center justify-between gap-3 border-t pt-4 text-xs text-muted-foreground">
-        {footer ?? <span className="font-mono">#{question.id}</span>}
-        <button
-          type="button"
-          onClick={report}
-          disabled={reported}
-          className="flex items-center gap-1.5 rounded-full px-2 py-1 transition-colors hover:text-foreground disabled:opacity-60"
-        >
-          <Flag className="size-3.5" aria-hidden="true" />
-          {reported ? 'Reportada, gracias' : 'Reportar error'}
-        </button>
+      <footer className="flex flex-wrap items-center justify-between gap-2 border-t-3 border-ink px-3 py-2">
+        <VoteBar
+          questionId={question.id}
+          upvotes={question.upvotes}
+          downvotes={question.downvotes}
+          myVote={question.myVote}
+        />
+        <div className="flex items-center gap-2">
+          {question.authorUsername && (
+            <span className="text-xs text-muted-foreground">
+              por <span className="font-bold text-game-blue">@{question.authorUsername}</span>
+            </span>
+          )}
+          <ReportButton questionId={question.id} />
+        </div>
       </footer>
     </article>
+  )
+}
+
+function AnswerGrid({
+  type,
+  options,
+  pick,
+  correctIndex,
+  disabled,
+  onChoose,
+}: {
+  type: PublicQuestion['type']
+  options: string[]
+  pick: number | null
+  correctIndex: number | null
+  disabled: boolean
+  onChoose: (i: number) => void
+}) {
+  const isTF = type === 'true_false'
+  const long = options.some((o) => o.length > 64)
+  const revealed = correctIndex !== null
+
+  return (
+    <div className={cn('grid gap-3', isTF || !long ? 'grid-cols-2' : 'grid-cols-1')} role="group" aria-label="Opciones">
+      {options.map((opt, i) => {
+        const quad = isTF ? QUADS[i === 0 ? 3 : 0] : QUADS[i % 4]
+        const isCorrect = revealed && i === correctIndex
+        const isWrongPick = revealed && i === pick && i !== correctIndex
+        const dim = revealed && !isCorrect && !isWrongPick
+        return (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onChoose(i)}
+            disabled={disabled}
+            aria-label={`Opción ${quad.key}: ${opt}`}
+            className={cn(
+              'pixel-btn group relative flex min-h-20 items-center gap-3 px-3 py-3 text-left text-ink',
+              quad.bg,
+              isTF && 'min-h-24 justify-center text-center',
+              !revealed && pick === i && 'animate-pulse',
+              dim && 'opacity-25 saturate-0',
+              isCorrect && 'z-10 outline-4 outline-offset-2 outline-foreground',
+              isWrongPick && 'animate-shake',
+              disabled && 'cursor-default',
+            )}
+            style={{ animationDelay: revealed ? undefined : `${i * 60}ms` }}
+          >
+            {!isTF && (
+              <span className="flex size-7 shrink-0 items-center justify-center border-2 border-ink bg-ink/15 font-pixel text-[10px]">
+                {isCorrect ? <Check className="size-4" strokeWidth={4} /> : isWrongPick ? <X className="size-4" strokeWidth={4} /> : quad.key}
+              </span>
+            )}
+            <span className={cn('min-w-0 flex-1 text-sm font-bold leading-snug sm:text-base', isTF && 'font-pixel text-xs sm:text-sm')}>
+              {isTF && isCorrect && <Check className="mx-auto mb-1 size-5" strokeWidth={4} />}
+              {isTF && isWrongPick && <X className="mx-auto mb-1 size-5" strokeWidth={4} />}
+              <MathText text={opt} />
+            </span>
+            {isCorrect && <PixelBurst seed={i + 1} />}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function OrderBoard({
+  options,
+  displayOrder,
+  order,
+  correctOrder,
+  locked,
+  onToggle,
+  onReset,
+  onSubmit,
+  isPending,
+}: {
+  options: string[]
+  displayOrder: number[]
+  order: number[]
+  correctOrder: number[] | null
+  locked: boolean
+  onToggle: (i: number) => void
+  onReset: () => void
+  onSubmit: () => void
+  isPending: boolean
+}) {
+  const revealed = correctOrder !== null
+  const complete = order.length === options.length
+
+  if (revealed) {
+    return (
+      <ol className="flex flex-col gap-2" aria-label="Orden correcto">
+        {correctOrder.map((optIdx, pos) => {
+          const ok = order[pos] === optIdx
+          return (
+            <li
+              key={optIdx}
+              className={cn(
+                'flex animate-pop-in items-center gap-3 border-3 border-ink px-3 py-2.5 text-sm font-bold text-ink',
+                ok ? 'bg-game-green' : 'bg-game-yellow',
+              )}
+              style={{ animationDelay: `${pos * 90}ms` }}
+            >
+              <span className="flex size-7 shrink-0 items-center justify-center border-2 border-ink bg-ink/15 font-pixel text-[10px]">
+                {pos + 1}
+              </span>
+              <MathText text={options[optIdx]} className="flex-1" />
+              {ok ? <Check className="size-4" strokeWidth={4} /> : <X className="size-4" strokeWidth={4} />}
+            </li>
+          )
+        })}
+      </ol>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-muted-foreground">Tocá los pasos en el orden correcto.</p>
+      <ul className="flex flex-col gap-2">
+        {displayOrder.map((optIdx, i) => {
+          const pos = order.indexOf(optIdx)
+          const quad = QUADS[i % 4]
+          return (
+            <li key={optIdx}>
+              <button
+                type="button"
+                onClick={() => onToggle(optIdx)}
+                disabled={locked}
+                aria-pressed={pos >= 0}
+                className={cn(
+                  'pixel-btn flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm font-bold',
+                  pos >= 0 ? cn(quad.bg, 'text-ink') : 'bg-secondary text-foreground',
+                )}
+              >
+                <span
+                  className={cn(
+                    'flex size-7 shrink-0 items-center justify-center border-2 border-ink font-pixel text-[10px]',
+                    pos >= 0 ? 'animate-pop-in bg-ink text-foreground' : 'bg-ink/30',
+                  )}
+                >
+                  {pos >= 0 ? pos + 1 : ''}
+                </span>
+                <MathText text={options[optIdx]} className="flex-1" />
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onReset}
+          disabled={locked || order.length === 0}
+          className="pixel-btn flex items-center gap-2 bg-secondary px-3 py-2.5 text-xs font-bold disabled:opacity-40"
+        >
+          <RotateCcw className="size-4" aria-hidden="true" />
+          Reiniciar
+        </button>
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={locked || !complete}
+          className="pixel-btn flex-1 bg-primary py-2.5 font-pixel text-[10px] text-primary-foreground disabled:opacity-40"
+        >
+          {isPending ? 'CHEQUEANDO…' : complete ? 'CONFIRMAR' : `${order.length}/${options.length}`}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ResultPanel({ revealed, animate }: { revealed: Revealed; animate: boolean }) {
+  return (
+    <div className={cn('relative flex flex-col gap-3', animate && 'animate-pop-in')}>
+      {animate && revealed.points > 0 && (
+        <span
+          className="pointer-events-none absolute -top-6 right-4 animate-float-up font-pixel text-lg text-primary text-shadow-pixel"
+          aria-hidden="true"
+        >
+          +{revealed.points}
+        </span>
+      )}
+      <div
+        className={cn(
+          'flex items-center justify-between gap-3 border-3 border-ink px-4 py-3 text-ink',
+          revealed.isCorrect ? 'bg-game-green' : 'bg-game-red',
+        )}
+        role="status"
+      >
+        <span className="font-pixel text-xs sm:text-sm">{revealed.isCorrect ? '¡CORRECTO!' : 'GAME OVER…'}</span>
+        <span className="font-pixel text-xs tabular-nums">{revealed.points > 0 ? `+${revealed.points} PTS` : '+0'}</span>
+      </div>
+
+      {(revealed.comboBonus ?? 0) > 0 && (
+        <div className="flex items-center justify-center gap-2 border-3 border-ink bg-primary py-2 font-pixel text-[10px] text-primary-foreground animate-bob">
+          <Zap className="size-4 fill-current" aria-hidden="true" />
+          COMBO x{revealed.combo} · +{revealed.comboBonus} BONUS
+        </div>
+      )}
+      {revealed.streakExtended && (
+        <div className="flex items-center justify-center gap-2 border-3 border-ink bg-streak py-2 font-pixel text-[10px] text-streak-foreground">
+          <Flame className="size-4 fill-current" aria-hidden="true" />
+          ¡RACHA ASEGURADA HOY!
+        </div>
+      )}
+
+      <div className="border-l-4 border-primary bg-ink/40 px-4 py-3">
+        <span className="mb-1 block font-pixel text-[8px] text-primary">POR QUÉ</span>
+        <p className="text-pretty text-sm leading-relaxed">
+          <MathText text={revealed.explanation} />
+        </p>
+      </div>
+    </div>
   )
 }

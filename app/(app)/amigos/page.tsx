@@ -7,7 +7,7 @@ import { friendships, profiles, user } from '@/lib/db/schema'
 import { displayStreak, getFriendIds } from '@/lib/game/queries'
 import { requireUser } from '@/lib/session'
 
-export const metadata: Metadata = { title: 'Amigos — Bitácora' }
+export const metadata: Metadata = { title: 'Amigos — Bit a Bit' }
 export const dynamic = 'force-dynamic'
 
 const userFields = {

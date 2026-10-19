@@ -4,7 +4,7 @@ import { AuthForm } from '@/components/auth-form'
 import { AuthShell } from '@/components/auth-shell'
 import { getSession } from '@/lib/session'
 
-export const metadata: Metadata = { title: 'Crear cuenta — Bitácora' }
+export const metadata: Metadata = { title: 'Crear cuenta — Bit a Bit' }
 
 export default async function RegistroPage() {
   const session = await getSession()

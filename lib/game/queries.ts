@@ -10,35 +10,49 @@ import {
   questions,
   subjects,
   user,
+  type QuestionContext,
+  type QuestionType,
 } from '@/lib/db/schema'
 import { addDays, daysBetween, localDate, weekStart } from './dates'
 import { effectiveStreak, FEED_ANSWERS_FOR_STREAK } from './rules'
 
 export type PublicQuestion = {
   id: number
-  type: 'mcq' | 'true_false'
+  type: QuestionType
   prompt: string
   options: string[]
+  context: QuestionContext | null
   difficulty: number
   topic: string | null
   subjectName: string
   subjectShort: string
   subjectColor: string
+  upvotes: number
+  downvotes: number
+  myVote: number
+  authorUsername: string | null
 }
 
-const publicQuestionFields = {
-  id: questions.id,
-  type: questions.type,
-  prompt: questions.prompt,
-  options: questions.options,
-  difficulty: questions.difficulty,
-  topic: questions.topic,
-  subjectName: subjects.name,
-  subjectShort: subjects.shortName,
-  subjectColor: subjects.color,
+function publicQuestionFields(userId: string) {
+  return {
+    id: questions.id,
+    type: questions.type,
+    prompt: questions.prompt,
+    options: questions.options,
+    context: questions.context,
+    difficulty: questions.difficulty,
+    topic: questions.topic,
+    subjectName: subjects.name,
+    subjectShort: subjects.shortName,
+    subjectColor: subjects.color,
+    upvotes: questions.upvotes,
+    downvotes: questions.downvotes,
+    myVote: sql<number>`coalesce((select v.value from question_votes v where v.question_id = ${questions.id} and v.user_id = ${userId}), 0)::int`,
+    authorUsername: sql<string | null>`(select u.username from "user" u where u.id = ${questions.authorId})`,
+  }
 }
 
-export async function getOrCreateDaily(date = localDate()) {
+export async function getOrCreateDaily(userId: string, date = localDate()) {
   const existing = await db.select().from(dailyQuestions).where(eq(dailyQuestions.date, date))
   if (!existing.length) {
     const pick = (difficulty?: number) =>
@@ -48,6 +62,8 @@ export async function getOrCreateDaily(date = localDate()) {
         .where(
           and(
             eq(questions.status, 'approved'),
+            sql`${questions.type} <> 'order'`,
+            sql`${questions.downvotes} - ${questions.upvotes} < 3`,
             difficulty ? eq(questions.difficulty, difficulty) : undefined,
             sql`${questions.id} not in (select question_id from daily_questions)`,
           ),
@@ -60,7 +76,7 @@ export async function getOrCreateDaily(date = localDate()) {
     await db.insert(dailyQuestions).values({ date, questionId: candidate.id }).onConflictDoNothing()
   }
   const [row] = await db
-    .select(publicQuestionFields)
+    .select(publicQuestionFields(userId))
     .from(dailyQuestions)
     .innerJoin(questions, eq(questions.id, dailyQuestions.questionId))
     .innerJoin(subjects, eq(subjects.id, questions.subjectId))
@@ -72,9 +88,11 @@ export async function getMyAnswer(userId: string, questionId: number) {
   const [row] = await db
     .select({
       selectedIndex: answers.selectedIndex,
+      selectedOrder: answers.selectedOrder,
       isCorrect: answers.isCorrect,
       points: answers.points,
       correctIndex: questions.correctIndex,
+      correctOrder: questions.answerOrder,
       explanation: questions.explanation,
     })
     .from(answers)
@@ -128,18 +146,21 @@ export async function getFeedPage({
 }) {
   const since = new Date(Number(seed.split('-')[0]) || Date.now())
   const rows = await db
-    .select(publicQuestionFields)
+    .select(publicQuestionFields(userId))
     .from(questions)
     .innerJoin(subjects, eq(subjects.id, questions.subjectId))
     .where(
       and(
         eq(questions.status, 'approved'),
+        sql`${questions.downvotes} - ${questions.upvotes} < 5`,
         subjectIds.length ? inArray(questions.subjectId, subjectIds) : undefined,
         sql`not exists (select 1 from answers a where a.question_id = ${questions.id} and a.user_id = ${userId} and a.answered_at < ${since.toISOString()})`,
         sql`${questions.id} not in (select question_id from daily_questions where date = ${localDate()})`,
       ),
     )
-    .orderBy(sql`md5(${questions.id}::text || ${seed})`)
+    .orderBy(
+      sql`('x' || substr(md5(${questions.id}::text || ${seed}), 1, 8))::bit(32)::int::float / 2147483648.0 - least(greatest(${questions.upvotes} - ${questions.downvotes}, -5), 10) * 0.08`,
+    )
     .limit(pageSize)
     .offset(page * pageSize)
   return rows as PublicQuestion[]
@@ -210,8 +231,20 @@ export async function getLeaderboard({
   })) as LeaderboardRow[]
 }
 
+export async function getTopQuestions(userId: string, limit = 30) {
+  const score = sql<number>`${questions.upvotes} - ${questions.downvotes}`
+  const rows = await db
+    .select(publicQuestionFields(userId))
+    .from(questions)
+    .innerJoin(subjects, eq(subjects.id, questions.subjectId))
+    .where(and(eq(questions.status, 'approved'), sql`${questions.upvotes} + ${questions.downvotes} > 0`))
+    .orderBy(desc(score), desc(questions.upvotes))
+    .limit(limit)
+  return rows as PublicQuestion[]
+}
+
 export async function getDailyDebate(userId: string, date = localDate()) {
-  const daily = await getOrCreateDaily(date)
+  const daily = await getOrCreateDaily(userId, date)
   if (!daily) return null
   const mine = await getMyAnswer(userId, daily.id)
   const distribution = await db

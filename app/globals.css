@@ -6,8 +6,9 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback', ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback', ui-monospace, monospace;
+  --font-sans: var(--font-jetbrains), ui-monospace, monospace;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-pixel: var(--font-press-start), ui-monospace, monospace;
 
   --color-ring: var(--ring);
   --color-input: var(--input);
@@ -30,50 +31,143 @@
   --color-background: var(--background);
   --color-streak: var(--streak);
   --color-streak-foreground: var(--streak-foreground);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
+  --color-ink: var(--ink);
+  --color-game-red: var(--game-red);
+  --color-game-blue: var(--game-blue);
+  --color-game-yellow: var(--game-yellow);
+  --color-game-green: var(--game-green);
+
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --radius-2xl: 8px;
+  --radius-3xl: 10px;
+
+  --animate-pop-in: pop-in 0.42s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+  --animate-shake: shake 0.42s steps(2, end) both;
+  --animate-float-up: float-up 1.1s steps(10, end) forwards;
+  --animate-blink: blink 1s steps(1, end) infinite;
+  --animate-bob: bob 1.6s steps(4, end) infinite;
+  --animate-flash: flash 0.5s steps(3, end) both;
+  --animate-march: march 12s linear infinite;
+  --animate-bit-flip: bit-flip 3.2s steps(1, end) infinite;
 }
 
 :root {
   color-scheme: dark;
-  --background: oklch(0.17 0.018 255);
-  --foreground: oklch(0.96 0.008 255);
-  --card: oklch(0.215 0.02 255);
-  --card-foreground: oklch(0.96 0.008 255);
-  --popover: oklch(0.215 0.02 255);
-  --popover-foreground: oklch(0.96 0.008 255);
-  --primary: oklch(0.84 0.14 168);
-  --primary-foreground: oklch(0.2 0.03 200);
-  --secondary: oklch(0.26 0.02 255);
-  --secondary-foreground: oklch(0.96 0.008 255);
-  --muted: oklch(0.26 0.02 255);
-  --muted-foreground: oklch(0.7 0.02 255);
-  --accent: oklch(0.29 0.025 255);
-  --accent-foreground: oklch(0.96 0.008 255);
-  --destructive: oklch(0.7 0.17 22);
-  --destructive-foreground: oklch(0.17 0.018 255);
-  --streak: oklch(0.83 0.15 75);
-  --streak-foreground: oklch(0.2 0.03 60);
-  --border: oklch(0.96 0.008 255 / 9%);
-  --input: oklch(0.96 0.008 255 / 14%);
-  --ring: oklch(0.84 0.14 168 / 60%);
-  --radius: 0.875rem;
+  /* 1 base + 4 arcade colors (Simon-style quadrants). Neutrals derive from the base. */
+  --background: #15123b;
+  --foreground: #f4f1ff;
+  --ink: #07051c;
+  --game-red: #ff4f6d;
+  --game-blue: #3d8bff;
+  --game-yellow: #ffc83d;
+  --game-green: #2fd27f;
+
+  --card: color-mix(in oklab, var(--background) 82%, var(--foreground) 6%);
+  --card-foreground: var(--foreground);
+  --popover: var(--card);
+  --popover-foreground: var(--foreground);
+  --primary: var(--game-yellow);
+  --primary-foreground: var(--ink);
+  --secondary: color-mix(in oklab, var(--background) 76%, var(--foreground) 12%);
+  --secondary-foreground: var(--foreground);
+  --muted: color-mix(in oklab, var(--background) 76%, var(--foreground) 12%);
+  --muted-foreground: color-mix(in oklab, var(--foreground) 66%, var(--background));
+  --accent: color-mix(in oklab, var(--background) 70%, var(--game-blue) 30%);
+  --accent-foreground: var(--foreground);
+  --destructive: var(--game-red);
+  --destructive-foreground: var(--ink);
+  --streak: var(--game-red);
+  --streak-foreground: var(--ink);
+  --border: var(--ink);
+  --input: var(--ink);
+  --ring: var(--game-yellow);
+  --radius: 4px;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring/60;
   }
   html {
     -webkit-tap-highlight-color: transparent;
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    background-image:
+      radial-gradient(color-mix(in oklab, var(--foreground) 9%, transparent) 1px, transparent 1px);
+    background-size: 22px 22px;
   }
+  ::selection {
+    background: var(--game-yellow);
+    color: var(--ink);
+  }
+}
+
+/* CRT scanlines over everything — texture only, never intercepts input. */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 2px,
+    color-mix(in oklab, var(--ink) 22%, transparent) 2px 3px
+  );
+  mix-blend-mode: multiply;
+}
+
+@utility pixel-box {
+  border: 3px solid var(--ink);
+  box-shadow:
+    inset 3px 3px 0 0 color-mix(in oklab, var(--foreground) 14%, transparent),
+    inset -3px -3px 0 0 color-mix(in oklab, var(--ink) 35%, transparent),
+    5px 5px 0 0 var(--ink);
+}
+
+@utility pixel-btn {
+  border: 3px solid var(--ink);
+  box-shadow:
+    inset 3px 3px 0 0 color-mix(in oklab, white 35%, transparent),
+    inset -3px -4px 0 0 color-mix(in oklab, var(--ink) 30%, transparent),
+    4px 4px 0 0 var(--ink);
+  transition:
+    transform 70ms steps(2),
+    box-shadow 70ms steps(2),
+    filter 120ms;
+  &:hover:not(:disabled) {
+    filter: brightness(1.08);
+    transform: translate(-1px, -1px);
+    box-shadow:
+      inset 3px 3px 0 0 color-mix(in oklab, white 35%, transparent),
+      inset -3px -4px 0 0 color-mix(in oklab, var(--ink) 30%, transparent),
+      5px 5px 0 0 var(--ink);
+  }
+  &:active:not(:disabled) {
+    transform: translate(4px, 4px);
+    box-shadow:
+      inset 3px 3px 0 0 color-mix(in oklab, var(--ink) 25%, transparent),
+      0 0 0 0 var(--ink);
+  }
+}
+
+@utility pixel-corners {
+  clip-path: polygon(
+    0 6px, 3px 6px, 3px 3px, 6px 3px, 6px 0,
+    calc(100% - 6px) 0, calc(100% - 6px) 3px, calc(100% - 3px) 3px, calc(100% - 3px) 6px, 100% 6px,
+    100% calc(100% - 6px), calc(100% - 3px) calc(100% - 6px), calc(100% - 3px) calc(100% - 3px),
+    calc(100% - 6px) calc(100% - 3px), calc(100% - 6px) 100%,
+    6px 100%, 6px calc(100% - 3px), 3px calc(100% - 3px), 3px calc(100% - 6px), 0 calc(100% - 6px)
+  );
+}
+
+@utility text-shadow-pixel {
+  text-shadow:
+    3px 3px 0 var(--ink);
 }
 
 .no-scrollbar {
@@ -85,4 +179,61 @@
 
 .katex {
   font-size: 1.05em;
+}
+
+@keyframes pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.6) translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+@keyframes float-up {
+  0% { opacity: 0; transform: translateY(8px) scale(0.8); }
+  15% { opacity: 1; transform: translateY(0) scale(1.15); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-56px) scale(1); }
+}
+@keyframes blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+@keyframes bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+@keyframes flash {
+  0%, 100% { filter: brightness(1); }
+  33% { filter: brightness(1.6); }
+  66% { filter: brightness(0.9); }
+}
+@keyframes march {
+  to { background-position: 400px 0; }
+}
+@keyframes bit-flip {
+  0%, 70% { transform: scale(1); }
+  72% { transform: scale(0.2, 1); }
+  74%, 100% { transform: scale(1); }
+}
+@keyframes pixel-burst {
+  0% { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

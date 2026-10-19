@@ -3,19 +3,20 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import useSWRInfinite from 'swr/infinite'
-import { ArrowDown, CalendarDays, Loader2, PartyPopper } from 'lucide-react'
+import { ChevronsDown, Plus, Trophy } from 'lucide-react'
 import { loadFeedPage } from '@/app/actions/game'
 import type { PublicQuestion } from '@/lib/game/queries'
-import { buttonVariants } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { sfx } from '@/lib/sfx'
 import { QuestionCard } from './question-card'
 import { useStats } from './stats-provider'
 
 const PAGE_SIZE = 8
+const VIEW_H = 'h-[calc(100dvh-9.5rem)] lg:h-[calc(100dvh-4rem)]'
+const SLIDE_H = 'min-h-[calc(100dvh-9.5rem)] lg:min-h-[calc(100dvh-4rem)]'
 
 function Slide({ children }: { children: React.ReactNode }) {
   return (
-    <section className="flex min-h-[calc(100dvh-8.5rem)] snap-start snap-always items-center justify-center px-4 py-6 md:min-h-[calc(100dvh-3.5rem)]">
+    <section className={`flex snap-start snap-always items-center justify-center px-4 py-6 ${SLIDE_H}`}>
       <div className="w-full max-w-xl">{children}</div>
     </section>
   )
@@ -49,34 +50,27 @@ export function Feed({ seed, firstPage }: { seed: string; firstPage: PublicQuest
   }
 
   return (
-    <div
-      onScroll={onScroll}
-      className="no-scrollbar h-[calc(100dvh-8.5rem)] snap-y snap-mandatory overflow-y-auto overscroll-contain md:h-[calc(100dvh-3.5rem)]"
-    >
+    <div onScroll={onScroll} className={`no-scrollbar snap-y snap-mandatory overflow-y-auto overscroll-contain ${VIEW_H}`}>
       {showDailyPrompt && (
         <Slide>
-          <div className="flex flex-col items-start gap-5 rounded-3xl border border-streak/30 bg-streak/10 p-7">
-            <span className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-wider text-streak">
-              <CalendarDays className="size-4" aria-hidden="true" />
-              Pregunta del día
-            </span>
-            <h2 className="text-balance text-2xl font-semibold leading-snug">
-              La misma pregunta para toda la carrera. Respondela y debatila con los demás.
+          <div className="pixel-box flex animate-pop-in flex-col items-center gap-6 bg-card px-6 py-10 text-center">
+            <span className="animate-blink font-pixel text-[10px] text-streak">{'★ NUEVO NIVEL ★'}</span>
+            <h2 className="text-balance font-pixel text-lg leading-relaxed text-primary text-shadow-pixel sm:text-xl">
+              PREGUNTA DEL DÍA
             </h2>
-            <p className="leading-relaxed text-muted-foreground">
-              Vale 30 puntos y asegura tu racha de hoy con una sola respuesta.
+            <p className="max-w-sm text-pretty leading-relaxed text-muted-foreground">
+              La misma para toda la carrera. Vale el doble de puntos, asegura tu racha y después se debate.
             </p>
-            <div className="flex flex-wrap items-center gap-3">
-              <Link
-                href="/hoy"
-                className={cn(buttonVariants({ size: 'lg' }), 'rounded-full bg-streak px-4 text-streak-foreground hover:bg-streak/90')}
-              >
-                Ir a la del día
-              </Link>
-              <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <ArrowDown className="size-4" aria-hidden="true" />o deslizá para el scroll
-              </span>
-            </div>
+            <Link
+              href="/hoy"
+              onClick={() => sfx.coin()}
+              className="pixel-btn animate-bob bg-game-red px-6 py-4 font-pixel text-xs text-ink"
+            >
+              {'▶ JUGAR AHORA'}
+            </Link>
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <ChevronsDown className="size-4 animate-bounce" aria-hidden="true" />o deslizá para el modo libre
+            </span>
           </div>
         </Slide>
       )}
@@ -89,19 +83,30 @@ export function Feed({ seed, firstPage }: { seed: string; firstPage: PublicQuest
 
       <Slide>
         {reachedEnd ? (
-          <div className="flex flex-col items-center gap-4 text-center">
-            <PartyPopper className="size-10 text-primary" aria-hidden="true" />
-            <h2 className="text-balance text-2xl font-semibold">¡Respondiste todo lo disponible!</h2>
+          <div className="pixel-box flex flex-col items-center gap-5 bg-card px-6 py-10 text-center">
+            <span className="font-pixel text-lg leading-relaxed text-game-yellow text-shadow-pixel">¡NIVEL COMPLETO!</span>
             <p className="max-w-sm text-pretty leading-relaxed text-muted-foreground">
-              Sumamos preguntas nuevas a medida que procesamos más exámenes. Mientras tanto, mirá cómo vas en el ranking.
+              Respondiste todas las preguntas disponibles. Creá una nueva para la comunidad o mirá cómo vas.
             </p>
-            <Link href="/ranking" className={cn(buttonVariants({ variant: 'outline', size: 'lg' }), 'rounded-full px-4')}>
-              Ver ranking
-            </Link>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Link href="/crear" className="pixel-btn flex items-center gap-2 bg-primary px-4 py-3 font-pixel text-[10px] text-primary-foreground">
+                <Plus className="size-4" aria-hidden="true" />
+                CREAR
+              </Link>
+              <Link href="/ranking" className="pixel-btn flex items-center gap-2 bg-game-green px-4 py-3 font-pixel text-[10px] text-ink">
+                <Trophy className="size-4" aria-hidden="true" />
+                RANKING
+              </Link>
+            </div>
           </div>
         ) : (
-          <div className="flex justify-center">
-            <Loader2 className="size-6 animate-spin text-muted-foreground" aria-label="Cargando más preguntas" />
+          <div className="flex flex-col items-center gap-4" role="status">
+            <div className="flex gap-2" aria-hidden="true">
+              {['bg-game-red', 'bg-game-blue', 'bg-game-yellow', 'bg-game-green'].map((c, i) => (
+                <span key={c} className={`size-4 animate-bob border-2 border-ink ${c}`} style={{ animationDelay: `${i * 120}ms` }} />
+              ))}
+            </div>
+            <span className="font-pixel text-[10px] text-muted-foreground">CARGANDO…</span>
           </div>
         )}
       </Slide>

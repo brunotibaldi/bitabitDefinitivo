@@ -7,7 +7,7 @@ import { getLeaderboard } from '@/lib/game/queries'
 import { requireUser } from '@/lib/session'
 import { cn } from '@/lib/utils'
 
-export const metadata: Metadata = { title: 'Ranking — Bitácora' }
+export const metadata: Metadata = { title: 'Ranking — Bit a Bit' }
 export const dynamic = 'force-dynamic'
 
 type Scope = 'friends' | 'global'
@@ -28,7 +28,12 @@ export default async function RankingPage({
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6 md:py-10">
       <header className="flex flex-col gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Ranking</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-pixel text-lg leading-relaxed text-primary text-shadow-pixel">RANKING</h1>
+          <Link href="/top" className="pixel-btn bg-game-yellow px-3 py-2 font-pixel text-[9px] text-ink">
+            {'★ TOP PREGUNTAS'}
+          </Link>
+        </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <Segmented
             label="Alcance"

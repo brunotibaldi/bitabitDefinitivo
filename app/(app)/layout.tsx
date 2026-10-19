@@ -23,9 +23,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         target: today.target,
       }}
     >
-      <TopBar />
-      <div className="pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">{children}</div>
-      <div className="md:hidden">
+      <TopBar isAdmin={profile.role === 'admin'} />
+      <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</div>
+      <div className="lg:hidden">
         <AppNav />
       </div>
     </StatsProvider>

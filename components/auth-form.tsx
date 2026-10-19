@@ -64,9 +64,11 @@ export function AuthForm({ mode }: { mode: Mode }) {
         }
         router.push('/onboarding')
       } else {
-        const { error } = await authClient.signIn.email({ email, password })
+        const { error } = email.includes('@')
+          ? await authClient.signIn.email({ email, password })
+          : await authClient.signIn.username({ username: email.toLowerCase(), password })
         if (error) {
-          setError('Email o contraseña incorrectos.')
+          setError('Usuario o contraseña incorrectos.')
           return
         }
         router.push('/')

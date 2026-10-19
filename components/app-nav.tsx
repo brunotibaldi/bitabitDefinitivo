@@ -2,17 +2,24 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { CalendarDays, Layers, Trophy, User, Users } from 'lucide-react'
+import { CalendarDays, Gamepad2, Plus, Trophy, User } from 'lucide-react'
+import { sfx } from '@/lib/sfx'
 import { cn } from '@/lib/utils'
 import { useStats } from './stats-provider'
 
 const ITEMS = [
-  { href: '/', label: 'Scroll', icon: Layers },
-  { href: '/hoy', label: 'Del día', icon: CalendarDays },
-  { href: '/ranking', label: 'Ranking', icon: Trophy },
-  { href: '/amigos', label: 'Amigos', icon: Users },
-  { href: '/perfil', label: 'Perfil', icon: User },
+  { href: '/', label: 'Jugar', icon: Gamepad2, color: 'bg-game-blue', desk: 'lg:bg-game-blue' },
+  { href: '/hoy', label: 'Del día', icon: CalendarDays, color: 'bg-game-red', desk: 'lg:bg-game-red' },
+  { href: '/crear', label: 'Crear', icon: Plus, color: 'bg-primary', desk: 'lg:bg-primary', center: true },
+  { href: '/ranking', label: 'Ranking', icon: Trophy, color: 'bg-game-green', desk: 'lg:bg-game-green' },
+  { href: '/perfil', label: 'Perfil', icon: User, color: 'bg-game-blue', desk: 'lg:bg-game-blue' },
 ]
+
+function isActive(pathname: string, href: string) {
+  if (href === '/') return pathname === '/'
+  if (href === '/ranking') return pathname.startsWith('/ranking') || pathname.startsWith('/amigos') || pathname.startsWith('/top')
+  return pathname.startsWith(href)
+}
 
 export function AppNav() {
   const pathname = usePathname()
@@ -20,25 +27,36 @@ export function AppNav() {
   return (
     <nav
       aria-label="Principal"
-      className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:static md:border-t-0 md:bg-transparent md:pb-0 md:backdrop-blur-none"
+      className="fixed inset-x-0 bottom-0 z-40 border-t-3 border-ink bg-background pb-[env(safe-area-inset-bottom)] lg:static lg:border-t-0 lg:bg-transparent lg:pb-0"
     >
-      <ul className="mx-auto flex max-w-md items-stretch justify-between px-2 md:max-w-none md:gap-1 md:px-0">
-        {ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = href === '/' ? pathname === '/' : pathname.startsWith(href)
+      <ul className="mx-auto flex max-w-md items-end justify-between px-2 lg:max-w-none lg:items-center lg:gap-1.5 lg:px-0">
+        {ITEMS.map(({ href, label, icon: Icon, color, desk, center }) => {
+          const active = isActive(pathname, href)
           return (
-            <li key={href} className="flex-1 md:flex-none">
+            <li key={href} className="flex flex-1 justify-center lg:flex-none">
               <Link
                 href={href}
+                onClick={() => sfx.tap()}
                 aria-current={active ? 'page' : undefined}
                 className={cn(
-                  'relative flex flex-col items-center gap-1 py-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground md:flex-row md:gap-2 md:rounded-full md:px-3.5 md:py-2 md:text-sm',
-                  active && 'text-primary hover:text-primary md:bg-primary/10',
+                  'relative flex flex-col items-center gap-1 py-2 text-[11px] font-bold text-muted-foreground transition-colors hover:text-foreground lg:flex-row lg:gap-2 lg:border-3 lg:px-3 lg:py-1.5 lg:text-xs',
+                  active ? 'text-foreground lg:border-ink lg:text-ink' : 'lg:border-transparent',
+                  active && desk,
                 )}
               >
-                <Icon className="size-5 md:size-4" aria-hidden="true" />
+                <span
+                  className={cn(
+                    'flex items-center justify-center border-3 transition-transform lg:border-0 lg:bg-transparent',
+                    center ? '-mt-6 size-14 border-ink bg-primary text-primary-foreground shadow-[4px_4px_0_0_var(--ink)] lg:mt-0 lg:size-auto lg:shadow-none lg:text-inherit' : 'size-9',
+                    !center && (active ? cn('border-ink text-ink', color) : 'border-transparent'),
+                    active && 'scale-105',
+                  )}
+                >
+                  <Icon className={cn(center ? 'size-7 lg:size-4' : 'size-5 lg:size-4')} strokeWidth={center ? 3 : 2} aria-hidden="true" />
+                </span>
                 {label}
                 {href === '/hoy' && !dailyDone && (
-                  <span className="absolute top-2 right-[calc(50%-14px)] size-2 rounded-full bg-streak md:static md:size-1.5" aria-label="pendiente" />
+                  <span className="absolute top-1.5 right-1 size-2.5 animate-blink border-2 border-ink bg-streak lg:static lg:size-2" aria-label="pendiente" />
                 )}
               </Link>
             </li>

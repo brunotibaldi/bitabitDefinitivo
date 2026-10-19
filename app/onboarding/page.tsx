@@ -5,7 +5,7 @@ import { questions, subjects } from '@/lib/db/schema'
 import { requireUser } from '@/lib/session'
 import { SubjectPicker } from '@/components/subject-picker'
 
-export const metadata: Metadata = { title: 'Elegí tus materias — Bitácora' }
+export const metadata: Metadata = { title: 'Elegí tus materias — Bit a Bit' }
 
 export default async function OnboardingPage() {
   const { user, profile } = await requireUser()

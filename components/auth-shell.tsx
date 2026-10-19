@@ -1,66 +1,52 @@
-import { Check } from 'lucide-react'
-import { MathText } from './math-text'
+import { Logo, LogoMark } from './logo'
+
+const DEMO = [
+  { label: 'O(n log n)', color: 'bg-game-red' },
+  { label: 'O(n²)', color: 'bg-game-blue' },
+  { label: 'O(n)', color: 'bg-game-yellow' },
+  { label: 'O(log n)', color: 'bg-game-green' },
+]
 
 export function AuthShell({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <main className="grid min-h-dvh lg:grid-cols-2">
-      <section className="flex flex-col justify-center px-6 py-12 sm:px-12">
-        <div className="mx-auto flex w-full max-w-sm flex-col gap-8">
-          <div className="flex items-center gap-2 font-mono text-sm font-semibold">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground" aria-hidden="true">
-              {'>_'}
-            </span>
-            bitácora
+    <main className="relative flex min-h-dvh flex-col overflow-hidden lg:flex-row">
+      <section className="relative hidden flex-1 flex-col justify-between border-r-3 border-ink bg-card p-10 lg:flex">
+        <Logo href="/login" />
+        <div className="flex flex-col gap-6">
+          <p className="font-pixel text-[10px] text-muted-foreground">{'> MERGESORT EN EL PEOR CASO ES…'}</p>
+          <div className="grid max-w-md grid-cols-2 gap-3">
+            {DEMO.map((d, i) => (
+              <div
+                key={d.label}
+                className={`pixel-btn flex h-20 animate-pop-in items-center justify-center font-pixel text-sm text-ink ${d.color} ${i === 0 ? 'outline-4 outline-offset-2 outline-foreground' : 'opacity-40'}`}
+                style={{ animationDelay: `${i * 90}ms` }}
+              >
+                {d.label}
+              </div>
+            ))}
           </div>
+          <p className="max-w-md text-pretty text-lg leading-relaxed text-muted-foreground">
+            Preguntas cortas de los exámenes de Cs. de la Computación. Sumá puntos, mantené la racha y ganale a tus amigos.
+          </p>
+        </div>
+        <div className="flex items-center gap-3 font-pixel text-[9px] text-muted-foreground">
+          <span className="animate-blink text-primary">{'▶'}</span> INSERT COIN TO CONTINUE
+        </div>
+      </section>
+
+      <section className="flex flex-1 flex-col items-center justify-center gap-8 px-5 py-10">
+        <div className="flex flex-col items-center gap-4 lg:hidden">
+          <LogoMark className="size-16 animate-bob" />
+          <span className="font-pixel text-base text-primary text-shadow-pixel">BIT A BIT</span>
+        </div>
+        <div className="pixel-box flex w-full max-w-sm animate-pop-in flex-col gap-6 bg-card p-6">
           <div className="flex flex-col gap-2">
-            <h1 className="text-balance text-3xl font-semibold tracking-tight">{title}</h1>
-            <p className="text-pretty leading-relaxed text-muted-foreground">{subtitle}</p>
+            <h1 className="font-pixel text-sm leading-relaxed text-primary">{title}</h1>
+            <p className="text-pretty text-sm leading-relaxed text-muted-foreground">{subtitle}</p>
           </div>
           {children}
         </div>
       </section>
-
-      <aside className="hidden flex-col justify-center gap-6 border-l bg-card/40 px-12 lg:flex" aria-hidden="true">
-        <div className="mx-auto flex w-full max-w-md -rotate-2 flex-col gap-4 rounded-3xl border bg-card p-6 shadow-2xl">
-          <span className="font-mono text-xs font-semibold uppercase tracking-wider text-primary">
-            Estructuras de Datos / complejidad
-          </span>
-          <p className="text-xl font-semibold leading-snug">
-            <MathText text="¿Cuál es la complejidad de buscar en un árbol AVL con $n$ nodos?" />
-          </p>
-          <div className="grid gap-2">
-            {['$O(n)$', '$O(\\log n)$', '$O(n \\log n)$'].map((o, i) => (
-              <div
-                key={o}
-                className={
-                  i === 1
-                    ? 'flex items-center gap-3 rounded-2xl border border-primary bg-primary/15 px-4 py-3'
-                    : 'flex items-center gap-3 rounded-2xl border bg-secondary/60 px-4 py-3 opacity-50'
-                }
-              >
-                <span
-                  className={
-                    i === 1
-                      ? 'flex size-7 items-center justify-center rounded-lg bg-primary text-primary-foreground'
-                      : 'flex size-7 items-center justify-center rounded-lg border font-mono text-xs'
-                  }
-                >
-                  {i === 1 ? <Check className="size-4" /> : 'ABC'[i]}
-                </span>
-                <MathText text={o} />
-              </div>
-            ))}
-          </div>
-          <span className="font-mono text-sm font-semibold text-primary">+15 pts</span>
-        </div>
-        <div className="mx-auto flex w-full max-w-md rotate-1 items-center justify-between rounded-2xl border border-streak/30 bg-streak/10 px-5 py-4">
-          <span className="text-sm font-medium">Racha actual</span>
-          <span className="font-mono text-2xl font-semibold text-streak">12 días</span>
-        </div>
-        <p className="mx-auto max-w-md text-pretty text-center text-sm leading-relaxed text-muted-foreground">
-          Preguntas cortas armadas a partir de exámenes reales de la Lic. en Ciencias de la Computación (FCEIA).
-        </p>
-      </aside>
     </main>
   )
 }
