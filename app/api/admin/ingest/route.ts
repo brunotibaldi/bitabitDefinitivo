@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { timingSafeEqual } from 'node:crypto'
-import { processPending, syncCatalog } from '@/lib/ingest/generate'
+import { processPending, seedQuestions, syncCatalog } from '@/lib/ingest/generate'
 
 export const maxDuration = 800
 
@@ -29,6 +29,7 @@ export async function POST(req: Request) {
   const action = url.searchParams.get('action') ?? 'generate'
 
   if (action === 'sync') return Response.json(await syncCatalog())
+  if (action === 'seed') return Response.json(await seedQuestions())
 
   const limit = Math.min(Number(url.searchParams.get('limit') ?? 8), 40)
   const concurrency = Math.min(Number(url.searchParams.get('concurrency') ?? 4), 8)

@@ -181,6 +181,29 @@ export async function processExam(examId: number) {
   return { examId, approved, rejected }
 }
 
+export async function seedQuestions() {
+  const { SEED_QUESTIONS } = await import('./seed-questions')
+  const [{ existing }] = await db
+    .select({ existing: sql<number>`count(*)::int` })
+    .from(questions)
+    .where(isNull(questions.examId))
+  if (existing > 0) return { inserted: 0, skipped: existing }
+  await db.insert(questions).values(
+    SEED_QUESTIONS.map(([subjectId, prompt, options, correctIndex, explanation, difficulty, topic]) => ({
+      subjectId,
+      type: options.length === 2 && options[0] === 'Verdadero' ? ('true_false' as const) : ('mcq' as const),
+      prompt,
+      options,
+      correctIndex,
+      explanation,
+      difficulty,
+      topic,
+      status: 'approved' as const,
+    })),
+  )
+  return { inserted: SEED_QUESTIONS.length }
+}
+
 export async function processPending(limit: number, concurrency = 4) {
   const pending = await db
     .select({ id: exams.id })
