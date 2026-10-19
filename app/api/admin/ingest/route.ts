@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { timingSafeEqual } from 'node:crypto'
 import { processPending, seedQuestions, syncCatalog } from '@/lib/ingest/generate'
 
-export const maxDuration = 800
+export const maxDuration = 300
 
 async function expectedTokens() {
   const tokens: string[] = []
