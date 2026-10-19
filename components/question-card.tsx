@@ -5,6 +5,7 @@ import { Check, Flame, RotateCcw, X, Zap } from 'lucide-react'
 import { submitAnswer } from '@/app/actions/game'
 import type { PublicQuestion } from '@/lib/game/queries'
 import { TYPE_META } from '@/lib/game/question-input'
+import { subjectTheme } from '@/lib/game/subject-theme'
 import { sfx } from '@/lib/sfx'
 import { cn } from '@/lib/utils'
 import { BlankPrompt, QuestionContextView } from './game/question-context'
@@ -137,14 +138,15 @@ export function QuestionCard({
         'pixel-box relative flex w-full flex-col bg-card',
         revealed && !initial && (revealed.isCorrect ? 'animate-flash' : 'animate-shake'),
       )}
+      style={subjectTheme(question.subjectId).cardStyle}
       aria-label={`Pregunta de ${question.subjectName}`}
     >
-      <header className="flex items-center justify-between gap-2 border-b-3 border-ink bg-ink/40 px-3 py-2">
+      <header className="flex items-center justify-between gap-2 border-b-3 border-ink bg-[var(--subj)] px-3 py-2 text-ink">
         <div className="flex min-w-0 items-center gap-2">
           <span className={cn('shrink-0 border-2 border-ink px-1.5 py-1 font-pixel text-[8px] text-ink', TYPE_COLOR[question.type])}>
             {meta.short}
           </span>
-          <span className="truncate text-xs font-bold uppercase tracking-wide text-muted-foreground" title={question.subjectName}>
+          <span className="truncate text-xs font-bold uppercase tracking-wide" title={question.subjectName}>
             {question.subjectShort}
             {question.topic && <span className="font-normal normal-case"> · {question.topic}</span>}
           </span>
@@ -432,8 +434,8 @@ function ResultPanel({ revealed, animate }: { revealed: Revealed; animate: boole
         </div>
       )}
 
-      <div className="border-l-4 border-primary bg-ink/40 px-4 py-3">
-        <span className="mb-1 block font-pixel text-[8px] text-primary">POR QUÉ</span>
+      <div className="border-l-4 border-[var(--subj)] bg-[var(--subj-soft)] px-4 py-3">
+        <span className="mb-1 block font-pixel text-[8px] text-[var(--subj)]">POR QUÉ</span>
         <p className="text-pretty text-sm leading-relaxed">
           <MathText text={revealed.explanation} />
         </p>

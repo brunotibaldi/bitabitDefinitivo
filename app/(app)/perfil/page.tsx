@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { sql } from 'drizzle-orm'
-import { Flame, Snowflake, Trophy } from 'lucide-react'
+import Link from 'next/link'
+import { Flame, Plus, Snowflake, Trophy } from 'lucide-react'
 import { ActivityHeatmap } from '@/components/activity-heatmap'
 import { SignOutButton } from '@/components/sign-out-button'
 import { SubjectPicker } from '@/components/subject-picker'
@@ -92,6 +93,17 @@ export default async function PerfilPage() {
           </ul>
         )}
       </section>
+
+      <Link
+        href="/crear"
+        className="pixel-btn flex items-center justify-between gap-3 bg-game-blue px-4 py-3 text-ink"
+      >
+        <span className="flex items-center gap-2 font-pixel text-[10px]">
+          <Plus className="size-4" aria-hidden="true" />
+          CREAR UNA PREGUNTA
+        </span>
+        <span className="text-xs font-bold">Proponé una para todos</span>
+      </Link>
 
       <section className="flex flex-col gap-4" aria-labelledby="subj-title">
         <h2 id="subj-title" className="text-sm font-semibold">Mis materias</h2>

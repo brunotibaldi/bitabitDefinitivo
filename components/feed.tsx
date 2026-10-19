@@ -1,12 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import useSWRInfinite from 'swr/infinite'
 import { ChevronsDown, Plus, Trophy } from 'lucide-react'
 import { loadFeedPage } from '@/app/actions/game'
 import type { PublicQuestion } from '@/lib/game/queries'
+import { subjectTheme } from '@/lib/game/subject-theme'
 import { sfx } from '@/lib/sfx'
+import { cn } from '@/lib/utils'
 import { QuestionCard } from './question-card'
 import { useStats } from './stats-provider'
 
@@ -14,10 +16,59 @@ const PAGE_SIZE = 8
 const VIEW_H = 'h-[calc(100dvh-9.5rem)] lg:h-[calc(100dvh-4rem)]'
 const SLIDE_H = 'min-h-[calc(100dvh-9.5rem)] lg:min-h-[calc(100dvh-4rem)]'
 
-function Slide({ children }: { children: React.ReactNode }) {
+function Slide({
+  children,
+  index = 0,
+  subjectId,
+}: {
+  children: React.ReactNode
+  index?: number
+  subjectId?: number
+}) {
+  const ref = useRef<HTMLElement>(null)
+  const [active, setActive] = useState(false)
+  const theme = subjectId ? subjectTheme(subjectId) : null
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(([entry]) => setActive(entry.intersectionRatio > 0.5), {
+      threshold: [0, 0.25, 0.5, 0.75],
+    })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  const fromLeft = index % 2 === 0
   return (
-    <section className={`flex snap-start snap-always items-center justify-center px-4 py-6 ${SLIDE_H}`}>
-      <div className="w-full max-w-xl">{children}</div>
+    <section
+      ref={ref}
+      style={theme?.slideStyle}
+      className={cn(
+        'relative flex snap-start snap-always items-center justify-center overflow-hidden px-4 py-6 transition-colors duration-500',
+        SLIDE_H,
+      )}
+    >
+      {theme && (
+        <div
+          aria-hidden="true"
+          style={{ backgroundImage: theme.slideStyle.backgroundImage, backgroundSize: '140px 140px' }}
+          className={cn(
+            'pointer-events-none absolute inset-0 animate-drift transition-opacity duration-700',
+            active ? 'opacity-40' : 'opacity-10',
+          )}
+        />
+      )}
+      <div
+        className={cn(
+          'relative w-full max-w-xl transition-all duration-500 ease-[cubic-bezier(0.2,1.4,0.4,1)] motion-reduce:transition-none',
+          active
+            ? 'translate-x-0 translate-y-0 rotate-0 scale-100 opacity-100'
+            : cn('translate-y-12 scale-90 opacity-30', fromLeft ? '-translate-x-8 -rotate-2' : 'translate-x-8 rotate-2'),
+        )}
+      >
+        {children}
+      </div>
     </section>
   )
 }
@@ -75,8 +126,8 @@ export function Feed({ seed, firstPage }: { seed: string; firstPage: PublicQuest
         </Slide>
       )}
 
-      {unique.map((q) => (
-        <Slide key={q.id}>
+      {unique.map((q, i) => (
+        <Slide key={q.id} index={i} subjectId={q.subjectId}>
           <QuestionCard question={q} />
         </Slide>
       ))}

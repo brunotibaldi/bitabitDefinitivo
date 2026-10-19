@@ -24,6 +24,7 @@ export type PublicQuestion = {
   context: QuestionContext | null
   difficulty: number
   topic: string | null
+  subjectId: number
   subjectName: string
   subjectShort: string
   subjectColor: string
@@ -42,6 +43,7 @@ function publicQuestionFields(userId: string) {
     context: questions.context,
     difficulty: questions.difficulty,
     topic: questions.topic,
+    subjectId: subjects.id,
     subjectName: subjects.name,
     subjectShort: subjects.shortName,
     subjectColor: subjects.color,

@@ -52,6 +52,7 @@
   --animate-flash: flash 0.5s steps(3, end) both;
   --animate-march: march 12s linear infinite;
   --animate-bit-flip: bit-flip 3.2s steps(1, end) infinite;
+  --animate-drift: drift 28s linear infinite;
 }
 
 :root {
@@ -224,6 +225,9 @@ body::after {
   0%, 70% { transform: scale(1); }
   72% { transform: scale(0.2, 1); }
   74%, 100% { transform: scale(1); }
+}
+@keyframes drift {
+  to { background-position: 140px 140px; }
 }
 @keyframes pixel-burst {
   0% { opacity: 1; transform: translate(0, 0) scale(1); }
