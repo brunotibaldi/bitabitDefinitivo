@@ -21,7 +21,7 @@ export function TopBar({ isAdmin }: { isAdmin: boolean }) {
         <div className="hidden lg:block">
           <AppNav />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 lg:ml-2 lg:border-l-3 lg:border-ink lg:pl-5">
           {isAdmin && (
             <Link
               href="/admin"

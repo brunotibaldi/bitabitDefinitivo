@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { AppNav } from '@/components/app-nav'
+import { BackgroundMusic } from '@/components/game/background-music'
 import { StatsProvider } from '@/components/stats-provider'
 import { TopBar } from '@/components/top-bar'
 import { localDate } from '@/lib/game/dates'
@@ -25,6 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         bits: profile.bits,
       }}
     >
+      <BackgroundMusic />
       <div data-shake-root>
         <TopBar isAdmin={profile.role === 'admin'} />
         <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</div>

@@ -477,7 +477,7 @@ export async function deleteDailyComment(id: number) {
 
 export async function saveSubjects(subjectIds: number[]) {
   const userId = await getUserId()
-  const ids = z.array(z.number().int().positive()).max(40).parse(subjectIds)
+  const ids = z.array(z.number().int().positive()).max(200).parse(subjectIds)
   await db.update(profiles).set({ subjectIds: ids, onboarded: true }).where(eq(profiles.userId, userId))
   revalidatePath('/', 'layout')
 }

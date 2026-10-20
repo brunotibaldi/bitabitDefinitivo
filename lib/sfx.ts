@@ -6,7 +6,7 @@ const MUTE_KEY = 'bitabit:muted'
 const listeners = new Set<() => void>()
 let ctx: AudioContext | null = null
 
-function audio() {
+export function audio() {
   if (typeof window === 'undefined') return null
   if (!ctx) {
     const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext

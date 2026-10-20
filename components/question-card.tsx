@@ -11,6 +11,7 @@ import { subjectTheme } from '@/lib/game/subject-theme'
 import { sfx } from '@/lib/sfx'
 import { shake } from '@/lib/shake'
 import { cn } from '@/lib/utils'
+import { FireAura } from './game/fire-aura'
 import { BitIcon } from './game/fire-meter'
 import { BlankPrompt, QuestionContextView } from './game/question-context'
 import { PixelBurst } from './game/pixel-burst'
@@ -206,6 +207,7 @@ export function QuestionCard({
       style={subjectTheme(question.subjectId).cardStyle}
       aria-label={`Pregunta de ${question.subjectName}`}
     >
+      <FireAura fire={stats.fire} />
       <header className="flex items-center justify-between gap-2 border-b-3 border-ink bg-[var(--subj)] px-3 py-2 text-ink">
         <div className="flex min-w-0 items-center gap-2">
           <span className={cn('shrink-0 border-2 border-ink px-1.5 py-1 font-pixel text-[8px] text-ink', TYPE_COLOR[question.type])}>
