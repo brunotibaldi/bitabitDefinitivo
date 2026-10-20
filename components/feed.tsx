@@ -45,7 +45,7 @@ function Slide({
       ref={ref}
       style={theme?.slideStyle}
       className={cn(
-        'relative flex snap-start snap-always items-center justify-center overflow-hidden px-4 py-6 transition-colors duration-500',
+        'relative flex snap-start snap-always items-center justify-center overflow-hidden px-7 pb-6 pt-24 transition-colors sm:px-12 duration-500',
         SLIDE_H,
       )}
     >

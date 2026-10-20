@@ -13,6 +13,7 @@ import {
   SUBJECT_COLORS,
 } from './fceia'
 import { buildSeedRows } from './seed-extra'
+import { planPlacement } from '@/lib/game/plan'
 
 const GENERATOR_MODEL = 'anthropic/claude-sonnet-5.5'
 const VERIFIER_MODEL = 'google/gemini-3.5-flash'
@@ -26,8 +27,9 @@ export async function syncCatalog() {
   const usedSubjects = [...new Set(apiExams.map((e) => e.subject_id))]
   let i = 0
   for (const id of usedSubjects) {
-    const { name, year, term } = subjectInfo.get(id) ?? { name: `Materia ${id}`, year: null, term: null }
+    const { name } = subjectInfo.get(id) ?? { name: `Materia ${id}` }
     if (isExcludedSubject(name)) continue
+    const { year, term } = planPlacement(name)
     await db
       .insert(subjects)
       .values({ id, name, shortName: shortName(name), color: SUBJECT_COLORS[i++ % SUBJECT_COLORS.length], year, term })

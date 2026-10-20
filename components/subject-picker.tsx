@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, ChevronDown, Loader2 } from 'lucide-react'
 import { saveSubjects } from '@/app/actions/game'
+import { termInYear } from '@/lib/game/plan'
 import { sfx } from '@/lib/sfx'
 import { shake } from '@/lib/shake'
 import { cn } from '@/lib/utils'
@@ -21,6 +22,15 @@ type Subject = {
 
 const YEAR_COLORS = ['bg-game-red', 'bg-game-blue', 'bg-game-yellow', 'bg-game-green', 'bg-primary'] as const
 const YEAR_NAMES = ['1ER AÑO', '2DO AÑO', '3ER AÑO', '4TO AÑO', '5TO AÑO']
+
+function splitByTerm(list: Subject[], year: number) {
+  if (!year) return [{ label: 'OPTATIVAS DEL PLAN', list }]
+  const blocks = [1, 2].map((t) => ({
+    label: `${t}º CUATRIMESTRE`,
+    list: list.filter((s) => (termInYear(s.term) ?? 1) === t),
+  }))
+  return blocks.filter((b) => b.list.length)
+}
 
 export function SubjectPicker({
   subjects,
@@ -93,8 +103,10 @@ export function SubjectPicker({
   }
 
   function save() {
+    const ids = selected.size ? [...selected] : subjects.map((s) => s.id)
+    if (!selected.size) setSelected(new Set(ids))
     startTransition(async () => {
-      await saveSubjects([...selected])
+      await saveSubjects(ids)
       sfx.coin()
       shake('soft')
       setSaved(true)
@@ -129,7 +141,7 @@ export function SubjectPicker({
                     {year || '?'}
                   </span>
                   <span className="flex min-w-0 flex-1 flex-col gap-1">
-                    <span className="font-pixel text-[11px] sm:text-xs">{year ? YEAR_NAMES[year - 1] : 'OTRAS'}</span>
+                    <span className="font-pixel text-[11px] sm:text-xs">{year ? YEAR_NAMES[year - 1] : 'ELECTIVAS'}</span>
                     <span className="flex items-center gap-1" aria-hidden="true">
                       {list.map((s) => (
                         <span key={s.id} className={cn('h-2 w-3 border-2 border-ink', selected.has(s.id) ? 'bg-ink' : 'bg-ink/20')} />
@@ -153,11 +165,18 @@ export function SubjectPicker({
                   >
                     {all ? 'QUITAR TODAS' : 'ELEGIR TODAS'}
                   </button>
+                  {splitByTerm(list, year).map((block) => (
+                  <div key={block.label} className="flex flex-col gap-2">
+                  <p className="flex items-center gap-2 font-pixel text-[8px] text-muted-foreground">
+                    <span className={cn('size-2 border-2 border-ink', color)} aria-hidden="true" />
+                    {block.label}
+                    <span className="h-0.5 flex-1 bg-ink" aria-hidden="true" />
+                  </p>
                   <ul className="grid gap-2 sm:grid-cols-2">
-                    {list.map((s, i) => {
+                    {block.list.map((s, i) => {
                       const on = selected.has(s.id)
                       return (
-                        <li key={s.id} className="animate-pop-in" style={{ animationDelay: `${(gi ? 0 : 0) + i * 40}ms` }}>
+                        <li key={s.id} className="animate-pop-in" style={{ animationDelay: `${i * 40}ms` }}>
                           <button
                             type="button"
                             onClick={() => toggle(s.id)}
@@ -177,7 +196,6 @@ export function SubjectPicker({
                                 {s.name}
                               </span>
                               <span className={cn('font-pixel text-[8px]', on ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
-                                {s.term ? `${s.term}º CUAT · ` : ''}
                                 {s.count} PREG
                               </span>
                             </span>
@@ -195,6 +213,8 @@ export function SubjectPicker({
                       )
                     })}
                   </ul>
+                  </div>
+                  ))}
                 </div>
               )}
             </section>

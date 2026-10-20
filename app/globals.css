@@ -286,6 +286,75 @@ body::after {
   100% { filter: brightness(1) saturate(1); }
 }
 
+/* ---------- Pixel fire around the question card ---------- */
+:root {
+  --fire-orange: color-mix(in oklab, var(--game-red) 50%, var(--game-yellow));
+}
+.fire-tongue {
+  position: relative;
+  width: var(--f-w);
+  transform-origin: 50% 100%;
+  will-change: transform;
+  background: linear-gradient(to top, var(--f-mid) 0 40%, var(--f-outer) 40% 100%);
+  clip-path: polygon(0 100%, 0 62%, 17% 62%, 17% 36%, 34% 36%, 34% 14%, 50% 14%, 50% 0, 67% 0, 67% 26%, 84% 26%, 84% 54%, 100% 54%, 100% 100%);
+  animation: fire-tongue 0.5s steps(3, end) infinite;
+}
+.fire-tongue::after {
+  content: '';
+  position: absolute;
+  left: 25%;
+  bottom: 0;
+  width: 50%;
+  height: 52%;
+  background: linear-gradient(to top, var(--f-core) 0 55%, var(--f-mid) 55% 100%);
+  clip-path: polygon(0 100%, 0 45%, 33% 45%, 33% 0, 66% 0, 66% 30%, 100% 30%, 100% 100%);
+}
+.fire-tongue-flip {
+  scale: -1 1;
+}
+@keyframes fire-tongue {
+  0%, 100% { transform: scale(1, 1) translateX(0); }
+  33% { transform: scale(1.12, 1.28) translateX(1px); }
+  66% { transform: scale(0.9, 0.82) translateX(-1px); }
+}
+.fire-glow {
+  box-shadow:
+    0 0 var(--f-glow) calc(var(--f-glow) / 3) color-mix(in oklab, var(--f-outer) var(--f-glow-alpha), transparent),
+    0 calc(var(--f-glow) / -2) calc(var(--f-glow) * 1.4) 0 color-mix(in oklab, var(--f-mid) var(--f-glow-alpha), transparent);
+  animation: fire-glow 0.6s steps(3, end) infinite;
+}
+@keyframes fire-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.fire-ring {
+  border: 3px solid var(--f-outer);
+  animation: fire-ring 0.4s steps(1, end) infinite;
+}
+@keyframes fire-ring {
+  0%, 100% { border-color: var(--f-outer); }
+  50% { border-color: var(--f-mid); }
+}
+.fire-ember {
+  width: 4px;
+  height: 4px;
+  background: var(--f-mid);
+  box-shadow: 0 0 0 1px var(--f-outer);
+  animation: fire-ember 1.4s steps(8, end) infinite;
+}
+@keyframes fire-ember {
+  0% { opacity: 0; transform: translate(0, 0); }
+  15% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--drift), calc(var(--rise) * -1)); }
+}
+.fire-flare {
+  animation: fire-flare 0.6s steps(5, end) both;
+}
+@keyframes fire-flare {
+  0% { transform: scale(1.06); filter: brightness(1.9); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
 /* Calmer backdrop on wide screens so the question is the focus. */
 @media (min-width: 1024px) {
   body {
