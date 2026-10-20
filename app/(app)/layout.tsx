@@ -21,10 +21,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         dailyDone: today.dailyDone,
         streakDoneToday: profile.lastActiveDate === localDate(),
         target: today.target,
+        fire: profile.combo,
+        bits: profile.bits,
       }}
     >
-      <TopBar isAdmin={profile.role === 'admin'} />
-      <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</div>
+      <div data-shake-root>
+        <TopBar isAdmin={profile.role === 'admin'} />
+        <div className="pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-0">{children}</div>
+      </div>
       <div className="lg:hidden">
         <AppNav />
       </div>

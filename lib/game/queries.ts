@@ -32,6 +32,10 @@ export type PublicQuestion = {
   downvotes: number
   myVote: number
   authorUsername: string | null
+  hasHint: boolean
+  hint: string | null
+  removed: number[]
+  firstItem: number | null
 }
 
 function publicQuestionFields(userId: string) {
@@ -51,6 +55,10 @@ function publicQuestionFields(userId: string) {
     downvotes: questions.downvotes,
     myVote: sql<number>`coalesce((select v.value from question_votes v where v.question_id = ${questions.id} and v.user_id = ${userId}), 0)::int`,
     authorUsername: sql<string | null>`(select u.username from "user" u where u.id = ${questions.authorId})`,
+    hasHint: sql<boolean>`(${questions.hint} is not null)`,
+    hint: sql<string | null>`(select ${questions.hint} from question_assists qa where qa.question_id = ${questions.id} and qa.user_id = ${userId} and qa.hint_used)`,
+    removed: sql<number[]>`coalesce((select qa.removed from question_assists qa where qa.question_id = ${questions.id} and qa.user_id = ${userId}), '[]'::jsonb)`,
+    firstItem: sql<number | null>`(select (${questions.answerOrder}->>0)::int from question_assists qa where qa.question_id = ${questions.id} and qa.user_id = ${userId} and qa.first_revealed)`,
   }
 }
 
@@ -64,7 +72,7 @@ export async function getOrCreateDaily(userId: string, date = localDate()) {
         .where(
           and(
             eq(questions.status, 'approved'),
-            sql`${questions.type} <> 'order'`,
+            sql`${questions.type} not in ('order', 'match')`,
             sql`${questions.downvotes} - ${questions.upvotes} < 3`,
             difficulty ? eq(questions.difficulty, difficulty) : undefined,
             sql`${questions.id} not in (select question_id from daily_questions)`,

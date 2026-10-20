@@ -15,22 +15,24 @@ export default async function OnboardingPage() {
       name: subjects.name,
       shortName: subjects.shortName,
       color: subjects.color,
+      year: subjects.year,
+      term: subjects.term,
       count: sql<number>`(select count(*) from ${questions} q where q.subject_id = ${subjects.id} and q.status = 'approved')::int`,
     })
     .from(subjects)
     .orderBy(subjects.name)
 
   return (
-    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-8 px-5 py-12">
+    <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-6 px-4 py-10 sm:px-5">
       <div className="flex flex-col gap-3">
-        <span className="font-mono text-xs font-semibold uppercase tracking-wider text-primary">
-          {'Hola, '}
-          {user.name.split(' ')[0]}
+        <span className="font-pixel text-[10px] text-primary">
+          {'PLAYER 1: '}
+          {user.name.split(' ')[0].toUpperCase()}
         </span>
-        <h1 className="text-balance text-3xl font-semibold tracking-tight">¿Qué estás cursando?</h1>
+        <h1 className="text-balance font-pixel text-lg leading-relaxed sm:text-2xl">ELEGÍ TU MUNDO</h1>
         <p className="text-pretty leading-relaxed text-muted-foreground">
-          Elegí las materias que querés repasar. Tu scroll va a mezclar preguntas de esas materias. Podés cambiarlo
-          cuando quieras desde tu perfil.
+          Abrí cada año y marcá las materias que querés repasar. Tu scroll va a mezclar preguntas de esas materias.
+          Podés cambiarlo cuando quieras desde tu perfil.
         </p>
       </div>
       <SubjectPicker subjects={rows.filter((s) => s.count > 0)} initial={profile.subjectIds} redirectTo="/" />

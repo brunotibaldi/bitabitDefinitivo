@@ -24,6 +24,8 @@ export default async function PerfilPage() {
         name: subjects.name,
         shortName: subjects.shortName,
         color: subjects.color,
+        year: subjects.year,
+        term: subjects.term,
         count: sql<number>`(select count(*) from ${questions} q where q.subject_id = ${subjects.id} and q.status = 'approved')::int`,
       })
       .from(subjects)

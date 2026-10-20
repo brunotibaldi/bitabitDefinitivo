@@ -9,46 +9,29 @@ import {
   fetchSolutionText,
   fetchSubjects,
   isExcludedSubject,
+  shortName,
+  SUBJECT_COLORS,
 } from './fceia'
+import { buildSeedRows } from './seed-extra'
 
 const GENERATOR_MODEL = 'anthropic/claude-sonnet-5.5'
 const VERIFIER_MODEL = 'google/gemini-3.5-flash'
 
-const SUBJECT_COLORS = ['emerald', 'sky', 'amber', 'rose', 'violet', 'teal', 'orange', 'lime']
-
-function shortName(name: string) {
-  const map: Record<string, string> = {
-    'Análisis Matemático I': 'Análisis I',
-    'Análisis Matemático II': 'Análisis II',
-    'Estructuras de Datos y Algoritmos II': 'EDyA II',
-    'Estructuras de Datos y Algoritmos I': 'EDyA I',
-    'Álgebra y Geometría Analítica I': 'Álgebra I',
-    'Arquitectura del Computador': 'Arquitectura',
-    'Complementos de Matemática I': 'Complementos I',
-    'Complementos de Matemática II': 'Complementos II',
-    'Lenguajes Formales y Computabilidad': 'Lenguajes Formales',
-    'Análisis de Lenguajes de Programación': 'ALP',
-    'Métodos Numéricos': 'Métodos Num.',
-  }
-  if (map[name]) return map[name]
-  return name.length > 22 ? `${name.slice(0, 20).trim()}…` : name
-}
-
 export async function syncCatalog() {
   const [apiSubjects, apiExams] = await Promise.all([fetchSubjects(), fetchExams()])
-  const subjectNames = new Map<number, string>()
-  for (const e of apiExams) subjectNames.set(e.subject_id, e.subject_name)
-  for (const s of apiSubjects) subjectNames.set(s.id, s.name)
+  const subjectInfo = new Map<number, { name: string; year: number | null; term: number | null }>()
+  for (const e of apiExams) subjectInfo.set(e.subject_id, { name: e.subject_name, year: null, term: null })
+  for (const s of apiSubjects) subjectInfo.set(s.id, { name: s.name, year: s.year, term: s.term })
 
   const usedSubjects = [...new Set(apiExams.map((e) => e.subject_id))]
   let i = 0
   for (const id of usedSubjects) {
-    const name = subjectNames.get(id) ?? `Materia ${id}`
+    const { name, year, term } = subjectInfo.get(id) ?? { name: `Materia ${id}`, year: null, term: null }
     if (isExcludedSubject(name)) continue
     await db
       .insert(subjects)
-      .values({ id, name, shortName: shortName(name), color: SUBJECT_COLORS[i++ % SUBJECT_COLORS.length] })
-      .onConflictDoUpdate({ target: subjects.id, set: { name, shortName: shortName(name) } })
+      .values({ id, name, shortName: shortName(name), color: SUBJECT_COLORS[i++ % SUBJECT_COLORS.length], year, term })
+      .onConflictDoUpdate({ target: subjects.id, set: { name, shortName: shortName(name), year, term } })
   }
 
   let inserted = 0
@@ -188,20 +171,9 @@ export async function seedQuestions() {
     .from(questions)
     .where(isNull(questions.examId))
   if (existing > 0) return { inserted: 0, skipped: existing }
-  await db.insert(questions).values(
-    SEED_QUESTIONS.map(([subjectId, prompt, options, correctIndex, explanation, difficulty, topic]) => ({
-      subjectId,
-      type: options.length === 2 && options[0] === 'Verdadero' ? ('true_false' as const) : ('mcq' as const),
-      prompt,
-      options,
-      correctIndex,
-      explanation,
-      difficulty,
-      topic,
-      status: 'approved' as const,
-    })),
-  )
-  return { inserted: SEED_QUESTIONS.length }
+  const rows = buildSeedRows(SEED_QUESTIONS)
+  await db.insert(questions).values(rows.map((r) => ({ ...r, status: 'approved' as const })))
+  return { inserted: rows.length }
 }
 
 export async function processPending(limit: number, concurrency = 4) {

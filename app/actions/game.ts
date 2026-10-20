@@ -9,23 +9,34 @@ import {
   dailyComments,
   dailyQuestions,
   profiles,
+  questionAssists,
   questionReports,
   questions,
   questionVotes,
+  SEQUENCE_TYPES,
   subjects,
+  type PowerupKind,
+  type QuestionType,
 } from '@/lib/db/schema'
 import { addDays, daysBetween, localDate } from '@/lib/game/dates'
 import {
   basePoints,
-  COMBO_BONUS,
-  COMBO_TARGET,
+  BITS_PER_CORRECT,
+  coolFire,
   FEED_ANSWERS_FOR_STREAK,
+  FIRE_BITS_BONUS,
+  FIRE_BITS_EVERY,
+  fireBonusPct,
+  HINT_PENALTY,
   MAX_STREAK_FREEZES,
+  POWERUPS,
   streakMultiplier,
 } from '@/lib/game/rules'
 import { getFeedPage } from '@/lib/game/queries'
 import { questionInput, REPORT_CATEGORIES, type QuestionInput } from '@/lib/game/question-input'
 import { getUserId, requireUser } from '@/lib/session'
+
+export type AnswerStats = { counts: number[]; total: number; correctPct: number }
 
 export type AnswerResult =
   | {
@@ -35,8 +46,14 @@ export type AnswerResult =
       correctOrder: number[] | null
       explanation: string
       points: number
-      comboBonus: number
-      combo: number
+      fireBonus: number
+      fireBonusPct: number
+      fire: number
+      prevFire: number
+      bits: number
+      bitsEarned: number
+      hintUsed: boolean
+      stats: AnswerStats
       streak: number
       streakExtended: boolean
       usedFreeze: boolean
@@ -56,6 +73,29 @@ function sameOrder(a: number[], b: number[]) {
   return a.length === b.length && a.every((v, i) => v === b[i])
 }
 
+const isSequence = (type: QuestionType) => SEQUENCE_TYPES.includes(type)
+
+async function answerStats(questionId: number, optionCount: number, executor: Pick<typeof db, 'select'> = db) {
+  const rows = await executor
+    .select({
+      selectedIndex: answers.selectedIndex,
+      count: sql<number>`count(*)::int`,
+      correct: sql<number>`count(*) filter (where ${answers.isCorrect})::int`,
+    })
+    .from(answers)
+    .where(eq(answers.questionId, questionId))
+    .groupBy(answers.selectedIndex)
+  const counts = Array.from({ length: optionCount }, () => 0)
+  let total = 0
+  let correct = 0
+  for (const r of rows) {
+    if (r.selectedIndex < optionCount) counts[r.selectedIndex] += r.count
+    total += r.count
+    correct += r.correct
+  }
+  return { counts, total, correctPct: total ? Math.round((correct / total) * 100) : 0 }
+}
+
 export async function submitAnswer(input: z.infer<typeof answerSchema>): Promise<AnswerResult> {
   const parsed = answerSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'Respuesta inválida' }
@@ -70,15 +110,22 @@ export async function submitAnswer(input: z.infer<typeof answerSchema>): Promise
     .where(and(eq(questions.id, questionId), eq(questions.status, 'approved')))
   if (!question) return { ok: false, error: 'Pregunta no disponible' }
 
+  const [assist] = await db
+    .select()
+    .from(questionAssists)
+    .where(and(eq(questionAssists.userId, userId), eq(questionAssists.questionId, questionId)))
+  const hintUsed = Boolean(assist?.hintUsed)
+
   let isCorrect: boolean
-  if (question.type === 'order') {
+  if (isSequence(question.type)) {
     const expected = question.answerOrder ?? []
     if (!selectedOrder || selectedOrder.length !== expected.length || new Set(selectedOrder).size !== expected.length) {
-      return { ok: false, error: 'Ordená todos los pasos' }
+      return { ok: false, error: question.type === 'match' ? 'Uní todos los pares' : 'Ordená todos los pasos' }
     }
     isCorrect = sameOrder(selectedOrder, expected)
   } else {
     if (selectedIndex >= question.options.length) return { ok: false, error: 'Opción inválida' }
+    if (assist?.removed.includes(selectedIndex)) return { ok: false, error: 'Esa opción fue eliminada' }
     isCorrect = selectedIndex === question.correctIndex
   }
 
@@ -95,10 +142,11 @@ export async function submitAnswer(input: z.infer<typeof answerSchema>): Promise
       .values({
         userId,
         questionId,
-        selectedIndex: question.type === 'order' ? 0 : selectedIndex,
-        selectedOrder: question.type === 'order' ? selectedOrder : null,
+        selectedIndex: isSequence(question.type) ? 0 : selectedIndex,
+        selectedOrder: isSequence(question.type) ? selectedOrder : null,
         isCorrect,
         isDaily,
+        hintUsed,
         localDate: today,
         points: 0,
       })
@@ -130,20 +178,21 @@ export async function submitAnswer(input: z.infer<typeof answerSchema>): Promise
 
     const activeStreak =
       streakExtended || p.lastActiveDate === today || p.lastActiveDate === addDays(today, -1) ? streak : 0
-    let points = Math.round(
-      basePoints({ isCorrect, isDaily, difficulty: question.difficulty }) * streakMultiplier(activeStreak),
-    )
+    const prevFire = p.combo
+    const fire = isDaily ? prevFire : isCorrect ? prevFire + 1 : coolFire(prevFire)
+    const bonusPct = isCorrect && !isDaily ? fireBonusPct(fire) : 0
 
-    let combo = p.combo
-    let comboBonus = 0
-    if (!isDaily) {
-      combo = isCorrect ? combo + 1 : 0
-      if (combo >= COMBO_TARGET) {
-        comboBonus = COMBO_BONUS
-        combo = 0
-      }
+    let base = basePoints({ isCorrect, isDaily, difficulty: question.difficulty }) * streakMultiplier(activeStreak)
+    if (hintUsed) base *= HINT_PENALTY
+    const fireBonus = Math.round(base * (bonusPct / 100))
+    const points = Math.round(base) + fireBonus
+
+    let bitsEarned = 0
+    if (isCorrect) {
+      bitsEarned += BITS_PER_CORRECT
+      if (!isDaily && fire > 0 && fire % FIRE_BITS_EVERY === 0) bitsEarned += FIRE_BITS_BONUS
     }
-    points += comboBonus
+    const bits = p.bits + bitsEarned
 
     await tx.update(answers).set({ points }).where(eq(answers.id, inserted[0].id))
     const totalPoints = p.totalPoints + points
@@ -151,7 +200,9 @@ export async function submitAnswer(input: z.infer<typeof answerSchema>): Promise
       .update(profiles)
       .set({
         totalPoints,
-        combo,
+        combo: fire,
+        bestCombo: Math.max(p.bestCombo, fire),
+        bits,
         currentStreak: streak,
         longestStreak: Math.max(p.longestStreak, streak),
         streakFreezes: freezes,
@@ -163,16 +214,118 @@ export async function submitAnswer(input: z.infer<typeof answerSchema>): Promise
       ok: true as const,
       isCorrect,
       correctIndex: question.correctIndex,
-      correctOrder: question.type === 'order' ? (question.answerOrder ?? []) : null,
+      correctOrder: isSequence(question.type) ? (question.answerOrder ?? []) : null,
       explanation: question.explanation,
       points,
-      comboBonus,
-      combo,
+      fireBonus,
+      fireBonusPct: bonusPct,
+      fire,
+      prevFire,
+      bits,
+      bitsEarned,
+      hintUsed,
+      stats: await answerStats(questionId, question.options.length, tx),
       streak: activeStreak,
       streakExtended,
       usedFreeze,
       todayFeedCount: feedCount,
       totalPoints,
+    }
+  })
+}
+
+async function playableQuestion(userId: string, questionId: number) {
+  const [question] = await db
+    .select()
+    .from(questions)
+    .where(and(eq(questions.id, questionId), eq(questions.status, 'approved')))
+  if (!question) return { error: 'Pregunta no disponible' } as const
+  const [answered] = await db
+    .select({ id: answers.id })
+    .from(answers)
+    .where(and(eq(answers.userId, userId), eq(answers.questionId, questionId)))
+    .limit(1)
+  if (answered) return { error: 'Ya respondiste esta pregunta' } as const
+  return { question } as const
+}
+
+export async function revealHint(questionId: number) {
+  const userId = await getUserId()
+  if (!Number.isInteger(questionId) || questionId <= 0) return { ok: false as const, error: 'Pregunta inválida' }
+  const res = await playableQuestion(userId, questionId)
+  if ('error' in res) return { ok: false as const, error: res.error }
+  if (!res.question.hint) return { ok: false as const, error: 'Esta pregunta no tiene pista' }
+  await db
+    .insert(questionAssists)
+    .values({ userId, questionId, hintUsed: true })
+    .onConflictDoUpdate({ target: [questionAssists.userId, questionAssists.questionId], set: { hintUsed: true } })
+  return { ok: true as const, hint: res.question.hint as string }
+}
+
+const powerupSchema = z.object({
+  questionId: z.number().int().positive(),
+  kind: z.enum(['remove_one', 'remove_two', 'first_item']),
+})
+
+export type PowerupResult =
+  | { ok: true; kind: PowerupKind; removed: number[]; firstItem: number | null; bits: number; cost: number }
+  | { ok: false; error: string }
+
+export async function buyPowerup(input: { questionId: number; kind: PowerupKind }): Promise<PowerupResult> {
+  const parsed = powerupSchema.safeParse(input)
+  if (!parsed.success) return { ok: false, error: 'Poder inválido' }
+  const { questionId, kind } = parsed.data
+  const userId = await getUserId()
+  const res = await playableQuestion(userId, questionId)
+  if ('error' in res) return { ok: false, error: res.error ?? 'Pregunta no disponible' }
+  const q = res.question
+  const sequence = isSequence(q.type)
+
+  if (kind === 'first_item' && !sequence) return { ok: false, error: 'Solo para preguntas de ordenar o unir' }
+  if (kind !== 'first_item' && (sequence || q.type === 'true_false')) {
+    return { ok: false, error: 'Este poder no aplica a esta pregunta' }
+  }
+
+  return db.transaction(async (tx) => {
+    const [assist] = await tx
+      .select()
+      .from(questionAssists)
+      .where(and(eq(questionAssists.userId, userId), eq(questionAssists.questionId, questionId)))
+    const removed = assist?.removed ?? []
+    const [p] = await tx.select({ bits: profiles.bits }).from(profiles).where(eq(profiles.userId, userId)).for('update')
+
+    if (kind === 'first_item' && assist?.firstRevealed) {
+      return { ok: true as const, kind, removed, firstItem: q.answerOrder?.[0] ?? null, bits: p.bits, cost: 0 }
+    }
+
+    let nextRemoved = removed
+    if (kind !== 'first_item') {
+      const take = kind === 'remove_two' ? 2 : 1
+      const pool = q.options.map((_, i) => i).filter((i) => i !== q.correctIndex && !removed.includes(i))
+      if (pool.length - take < 1) return { ok: false as const, error: 'No quedan opciones para eliminar' }
+      const picked = pool.sort(() => Math.random() - 0.5).slice(0, take)
+      nextRemoved = [...removed, ...picked].sort((a, b) => a - b)
+    }
+
+    const { cost } = POWERUPS[kind]
+    if (p.bits < cost) return { ok: false as const, error: `Te faltan ${cost - p.bits} bits` }
+    const bits = p.bits - cost
+    await tx.update(profiles).set({ bits }).where(eq(profiles.userId, userId))
+    await tx
+      .insert(questionAssists)
+      .values({ userId, questionId, removed: nextRemoved, firstRevealed: kind === 'first_item' })
+      .onConflictDoUpdate({
+        target: [questionAssists.userId, questionAssists.questionId],
+        set: kind === 'first_item' ? { firstRevealed: true } : { removed: nextRemoved },
+      })
+
+    return {
+      ok: true as const,
+      kind,
+      removed: nextRemoved,
+      firstItem: kind === 'first_item' ? (q.answerOrder?.[0] ?? null) : null,
+      bits,
+      cost,
     }
   })
 }

@@ -10,6 +10,9 @@ export type Stats = {
   dailyDone: boolean
   streakDoneToday: boolean
   target: number
+  /** Consecutive correct answers (the "fire"). */
+  fire: number
+  bits: number
 }
 
 type Ctx = Stats & { apply: (patch: Partial<Stats> & { addPoints?: number }) => void }

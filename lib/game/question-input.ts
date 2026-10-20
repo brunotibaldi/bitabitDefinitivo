@@ -10,6 +10,7 @@ export const TYPE_META: Record<QuestionType, { label: string; short: string; hin
   proof_gap: { label: 'Completá la demostración', short: 'DEMO', hint: 'Escribí los pasos; marcá con ??? el paso que falta.' },
   code_output: { label: '¿Qué imprime?', short: 'CÓDIGO', hint: 'Pegá un fragmento de código y elegí su salida.' },
   order: { label: 'Ordená los pasos', short: 'ORDEN', hint: 'Cargá los pasos en el orden correcto; se mezclan al jugar.' },
+  match: { label: 'Uní las parejas', short: 'UNIR', hint: 'Cada concepto de la izquierda con su pareja de la derecha.' },
 }
 
 export const REPORT_CATEGORIES = [

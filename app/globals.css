@@ -53,6 +53,10 @@
   --animate-march: march 12s linear infinite;
   --animate-bit-flip: bit-flip 3.2s steps(1, end) infinite;
   --animate-drift: drift 28s linear infinite;
+  --animate-flicker: flicker 0.5s steps(4, end) infinite;
+  --animate-flicker-fast: flicker 0.25s steps(4, end) infinite;
+  --animate-ember: ember 1s steps(6, end) infinite;
+  --animate-cool-down: cool-down 0.8s steps(6, end) both;
 }
 
 :root {
@@ -232,6 +236,65 @@ body::after {
 @keyframes pixel-burst {
   0% { opacity: 1; transform: translate(0, 0) scale(1); }
   100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.4); }
+}
+
+@keyframes screen-shake-tap {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(0, 2px); }
+}
+@keyframes screen-shake-soft {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(0, -4px); }
+  50% { transform: translate(0, 3px); }
+  75% { transform: translate(0, -1px); }
+}
+@keyframes screen-shake-hard {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  10% { transform: translate(-10px, 4px) rotate(-0.6deg); }
+  25% { transform: translate(9px, -5px) rotate(0.5deg); }
+  40% { transform: translate(-7px, 3px) rotate(-0.4deg); }
+  55% { transform: translate(6px, -2px) rotate(0.3deg); }
+  70% { transform: translate(-3px, 2px); }
+  85% { transform: translate(2px, -1px); }
+}
+@keyframes screen-shake-boom {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  10% { transform: translate(0, -6px) scale(1.012); }
+  25% { transform: translate(-6px, 4px) scale(1.006); }
+  40% { transform: translate(6px, -3px); }
+  60% { transform: translate(-3px, 2px); }
+  80% { transform: translate(2px, -1px); }
+}
+.screen-shake-tap { animation: screen-shake-tap 0.12s steps(2, end); }
+.screen-shake-soft { animation: screen-shake-soft 0.32s steps(4, end); }
+.screen-shake-hard { animation: screen-shake-hard 0.5s steps(8, end); }
+.screen-shake-boom { animation: screen-shake-boom 0.55s steps(8, end); }
+
+@keyframes flicker {
+  0%, 100% { transform: scale(1, 1) translateY(0); }
+  25% { transform: scale(1.08, 0.94) translateY(1px); }
+  50% { transform: scale(0.94, 1.1) translateY(-1px); }
+  75% { transform: scale(1.04, 0.98); }
+}
+@keyframes ember {
+  0% { opacity: 0; transform: translateY(0); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-18px); }
+}
+@keyframes cool-down {
+  0% { filter: brightness(1.8) saturate(1); }
+  100% { filter: brightness(1) saturate(1); }
+}
+
+/* Calmer backdrop on wide screens so the question is the focus. */
+@media (min-width: 1024px) {
+  body {
+    background-image:
+      radial-gradient(color-mix(in oklab, var(--foreground) 4%, transparent) 1px, transparent 1px);
+  }
+  body::after {
+    opacity: 0.45;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
