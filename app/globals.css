@@ -57,6 +57,7 @@
   --animate-flicker-fast: flicker 0.25s steps(4, end) infinite;
   --animate-ember: ember 1s steps(6, end) infinite;
   --animate-cool-down: cool-down 0.8s steps(6, end) both;
+  --animate-crt-on: crt-on 0.5s cubic-bezier(0.2, 0.8, 0.3, 1) both;
 }
 
 :root {
@@ -173,6 +174,85 @@ body::after {
 @utility text-shadow-pixel {
   text-shadow:
     3px 3px 0 var(--ink);
+}
+
+/* RGB fringing like a phosphor screen photographed up close. */
+@utility text-crt {
+  text-shadow:
+    -1.5px 0 color-mix(in oklab, var(--game-red) 75%, transparent),
+    1.5px 0 color-mix(in oklab, var(--game-blue) 80%, transparent),
+    0 0 6px color-mix(in oklab, currentColor 35%, transparent);
+}
+
+.arcade-screen {
+  border: 3px solid var(--ink);
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--foreground) 14%, var(--background)),
+    6px 6px 0 3px var(--ink),
+    inset 0 0 60px 10px color-mix(in oklab, var(--ink) 90%, transparent),
+    inset 0 0 0 1px color-mix(in oklab, var(--foreground) 6%, transparent);
+  background-image: radial-gradient(
+    ellipse at center,
+    color-mix(in oklab, var(--game-blue) 9%, var(--ink)) 0%,
+    var(--ink) 75%
+  );
+}
+.arcade-screen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 2px,
+    color-mix(in oklab, var(--ink) 55%, transparent) 2px 3px
+  );
+  animation: crt-flicker 3.2s steps(1, end) infinite;
+}
+
+.arcade-grid {
+  display: grid;
+  grid-template-columns: 0.9rem 3.2rem minmax(0, 1fr) 5rem 2.6rem;
+  align-items: center;
+  column-gap: 0.5rem;
+}
+@media (min-width: 640px) {
+  .arcade-grid {
+    grid-template-columns: 1.25rem 4.5rem minmax(0, 1fr) 7rem 3.75rem;
+    column-gap: 0.9rem;
+  }
+}
+
+/* Stepped pixel arrow pointing at your own row. */
+.arcade-cursor {
+  display: block;
+  width: 0.6rem;
+  height: 0.7rem;
+  background: var(--game-yellow);
+  clip-path: polygon(0 0, 33% 0, 33% 14%, 66% 14%, 66% 36%, 100% 36%, 100% 64%, 66% 64%, 66% 86%, 33% 86%, 33% 100%, 0 100%);
+}
+
+.arcade-caret {
+  display: inline-block;
+  width: 0.7em;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: bottom;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+}
+
+@keyframes crt-on {
+  0% { opacity: 0; transform: scale(1, 0.006); filter: brightness(3); }
+  35% { opacity: 1; transform: scale(1, 0.006); filter: brightness(3); }
+  70% { transform: scale(1, 1.03); filter: brightness(1.6); }
+  100% { transform: scale(1, 1); filter: brightness(1); }
+}
+@keyframes crt-flicker {
+  0%, 96%, 100% { opacity: 1; }
+  97% { opacity: 0.7; }
+  98% { opacity: 1; }
+  99% { opacity: 0.85; }
 }
 
 .no-scrollbar {
