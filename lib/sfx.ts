@@ -68,6 +68,7 @@ const NOTE = { C5: 523.25, E5: 659.25, G5: 783.99, A5: 880, B5: 987.77, C6: 1046
 
 export const sfx = {
   tap: () => play([{ f: 880, t: 0, d: 0.04, vol: 0.35 }]),
+  type: (pitch = 0) => play([{ f: 1320 + pitch * 40, t: 0, d: 0.018, vol: 0.12 }]),
   select: () => play([{ f: 440, t: 0, d: 0.05, slide: 660, vol: 0.4 }]),
   correct: () =>
     play([

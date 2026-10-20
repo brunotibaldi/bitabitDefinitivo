@@ -2,14 +2,16 @@
 
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { startMusic, stopMusic } from '@/lib/music'
+import { setMusicFire, startMusic, stopMusic } from '@/lib/music'
 import { useMuted } from '@/lib/sfx'
+import { useStats } from '@/components/stats-provider'
 
 const GAME_ROUTES = ['/', '/hoy']
 
 export function BackgroundMusic() {
   const pathname = usePathname()
   const muted = useMuted()
+  const { fire } = useStats()
   const [unlocked, setUnlocked] = useState(false)
   const [visible, setVisible] = useState(true)
 
@@ -36,6 +38,10 @@ export function BackgroundMusic() {
     if (playing) startMusic()
     else stopMusic()
   }, [playing])
+
+  useEffect(() => {
+    setMusicFire(fire)
+  }, [fire])
 
   useEffect(() => stopMusic, [])
 

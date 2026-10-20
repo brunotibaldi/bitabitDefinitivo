@@ -1,8 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Flame, UserPlus } from 'lucide-react'
-import { UserAvatar } from '@/components/user-avatar'
-import { buttonVariants } from '@/components/ui/button'
+import { UserPlus } from 'lucide-react'
+import { ArcadeBoard } from '@/components/ranking/arcade-board'
 import { getLeaderboard } from '@/lib/game/queries'
 import { requireUser } from '@/lib/session'
 import { cn } from '@/lib/utils'
@@ -38,90 +37,61 @@ export default async function RankingPage({
           <Segmented
             label="Alcance"
             items={[
-              { label: 'Amigos', href: href('friends', period), active: scope === 'friends' },
-              { label: 'Global', href: href('global', period), active: scope === 'global' },
+              { label: 'AMIGOS', href: href('friends', period), active: scope === 'friends' },
+              { label: 'GLOBAL', href: href('global', period), active: scope === 'global' },
             ]}
           />
           <Segmented
             label="Período"
             items={[
-              { label: 'Semana', href: href(scope, 'week'), active: period === 'week' },
-              { label: 'Histórico', href: href(scope, 'all'), active: period === 'all' },
+              { label: 'SEMANA', href: href(scope, 'week'), active: period === 'week' },
+              { label: 'HISTÓRICO', href: href(scope, 'all'), active: period === 'all' },
             ]}
           />
         </div>
       </header>
 
       {scope === 'friends' && rows.length <= 1 && (
-        <div className="flex flex-col items-start gap-3 rounded-2xl border border-dashed p-5">
+        <div className="flex flex-col items-start gap-3 border-3 border-dashed border-foreground/25 p-4">
           <p className="text-pretty text-sm leading-relaxed text-muted-foreground">
             Todavía estás solo en este ranking. Sumá compañeros de cursada para competir.
           </p>
-          <Link href="/amigos" className={cn(buttonVariants({ size: 'sm' }), 'rounded-lg')}>
+          <Link
+            href="/amigos"
+            className="pixel-btn flex items-center gap-2 bg-game-green px-3 py-2 font-pixel text-[9px] text-ink"
+          >
             <UserPlus className="size-4" aria-hidden="true" />
-            Agregar amigos
+            AGREGAR AMIGOS
           </Link>
         </div>
       )}
 
-      <ol className="flex flex-col gap-2">
-        {rows.map((r, i) => {
-          const me = r.userId === profile.userId
-          return (
-            <li
-              key={r.userId}
-              className={cn(
-                'flex items-center gap-3 rounded-2xl border bg-card px-4 py-3',
-                me && 'border-primary/50 bg-primary/10',
-              )}
-            >
-              <span
-                className={cn(
-                  'w-7 shrink-0 text-center font-mono text-sm font-semibold text-muted-foreground',
-                  i === 0 && 'text-streak',
-                  i < 3 && 'text-base',
-                )}
-              >
-                {i + 1}
-              </span>
-              <UserAvatar name={r.name} color={r.avatarColor} />
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate font-medium">
-                  {r.name}
-                  {me && <span className="ml-2 text-xs font-normal text-primary">vos</span>}
-                </span>
-                <span className="truncate font-mono text-xs text-muted-foreground">@{r.username}</span>
-              </div>
-              {r.streak > 0 && (
-                <span className="flex items-center gap-1 font-mono text-xs text-streak" title={`Racha de ${r.streak} días`}>
-                  <Flame className="size-3.5" aria-hidden="true" />
-                  {r.streak}
-                  <span className="sr-only">días de racha</span>
-                </span>
-              )}
-              <span className="w-16 shrink-0 text-right font-mono text-sm font-semibold">
-                {r.points.toLocaleString('es-AR')}
-                <span className="sr-only"> puntos</span>
-              </span>
-            </li>
-          )
-        })}
-      </ol>
+      <ArcadeBoard
+        key={`${scope}-${period}`}
+        meId={profile.userId}
+        rows={rows.map((r) => ({
+          userId: r.userId,
+          name: r.name,
+          username: r.username,
+          points: r.points,
+          streak: r.streak,
+        }))}
+      />
     </main>
   )
 }
 
 function Segmented({ label, items }: { label: string; items: { label: string; href: string; active: boolean }[] }) {
   return (
-    <nav aria-label={label} className="flex rounded-xl border bg-card p-1">
+    <nav aria-label={label} className="flex border-3 border-ink bg-ink">
       {items.map((it) => (
         <Link
           key={it.label}
           href={it.href}
           aria-current={it.active ? 'page' : undefined}
           className={cn(
-            'rounded-lg px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground',
-            it.active && 'bg-secondary text-foreground',
+            'px-3 py-2 font-pixel text-[9px] text-muted-foreground transition-colors hover:text-foreground',
+            it.active && 'bg-primary text-primary-foreground hover:text-primary-foreground',
           )}
         >
           {it.label}
