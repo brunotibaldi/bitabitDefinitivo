@@ -848,7 +848,7 @@ function ResultPanel({ revealed, animate }: { revealed: Revealed; animate: boole
       {cooled && (
         <div className="flex items-center justify-center gap-2 border-3 border-ink bg-game-blue py-2 font-pixel text-[10px] text-ink">
           <Snowflake className="size-4" aria-hidden="true" />
-          {fire > 0 ? `EL FUEGO SE ENFRÍA · x${prevFire} → x${fire}` : `SE APAGÓ EL FUEGO (x${prevFire})`}
+          {`SE APAGÓ EL FUEGO (x${prevFire})`}
         </div>
       )}
       {revealed.hintUsed && revealed.isCorrect && (

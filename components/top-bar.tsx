@@ -5,12 +5,12 @@ import { Coins, Flame, ShieldCheck, Volume2, VolumeX } from 'lucide-react'
 import { setMuted, sfx, useMuted } from '@/lib/sfx'
 import { cn } from '@/lib/utils'
 import { AppNav } from './app-nav'
-import { BitsBadge, FireMeter } from './game/fire-meter'
+import { BitsBadge } from './game/fire-meter'
 import { Logo } from './logo'
 import { useStats } from './stats-provider'
 
 export function TopBar({ isAdmin }: { isAdmin: boolean }) {
-  const { streak, totalPoints, todayFeedCount, target, streakDoneToday, fire, bits } = useStats()
+  const { streak, totalPoints, todayFeedCount, target, streakDoneToday, bits } = useStats()
   const muted = useMuted()
   const progress = streakDoneToday ? 1 : Math.min(todayFeedCount / target, 1)
 
@@ -53,8 +53,8 @@ export function TopBar({ isAdmin }: { isAdmin: boolean }) {
             )}
           </div>
           <BitsBadge bits={bits} />
-          <div className="hidden h-9 items-center gap-1.5 border-3 border-ink bg-primary px-2 font-pixel text-[10px] tabular-nums text-primary-foreground sm:flex">
-            <Coins className="size-4" aria-hidden="true" />
+          <div className="flex h-9 items-center gap-1.5 border-3 border-ink bg-primary px-2 font-pixel text-[10px] tabular-nums text-primary-foreground">
+            <Coins className="hidden size-4 sm:block" aria-hidden="true" />
             <span className="sr-only">Puntos:</span>
             {totalPoints.toLocaleString('es-AR')}
           </div>
@@ -70,15 +70,6 @@ export function TopBar({ isAdmin }: { isAdmin: boolean }) {
           >
             {muted ? <VolumeX className="size-4" /> : <Volume2 className="size-4" />}
           </button>
-        </div>
-      </div>
-      <div className="border-t-3 border-ink bg-ink/60">
-        <div className="mx-auto flex h-8 max-w-5xl items-center justify-between gap-3 px-3 sm:px-4">
-          <span className="font-pixel text-[8px] text-muted-foreground">RACHA DE FUEGO</span>
-          <FireMeter fire={fire} />
-          <span className="font-pixel text-[8px] tabular-nums text-primary sm:hidden">
-            {totalPoints.toLocaleString('es-AR')} PTS
-          </span>
         </div>
       </div>
     </header>

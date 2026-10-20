@@ -22,7 +22,6 @@ import { addDays, daysBetween, localDate } from '@/lib/game/dates'
 import {
   basePoints,
   BITS_PER_CORRECT,
-  coolFire,
   FEED_ANSWERS_FOR_STREAK,
   FIRE_BITS_BONUS,
   FIRE_BITS_EVERY,
@@ -179,7 +178,7 @@ export async function submitAnswer(input: z.infer<typeof answerSchema>): Promise
     const activeStreak =
       streakExtended || p.lastActiveDate === today || p.lastActiveDate === addDays(today, -1) ? streak : 0
     const prevFire = p.combo
-    const fire = isDaily ? prevFire : isCorrect ? prevFire + 1 : coolFire(prevFire)
+    const fire = isDaily ? prevFire : isCorrect ? prevFire + 1 : 0
     const bonusPct = isCorrect && !isDaily ? fireBonusPct(fire) : 0
 
     let base = basePoints({ isCorrect, isDaily, difficulty: question.difficulty }) * streakMultiplier(activeStreak)
