@@ -73,6 +73,8 @@ export const profiles = pgTable('profiles', {
   lastActiveDate: date('last_active_date'),
   streakFreezes: integer('streak_freezes').notNull().default(0),
   combo: integer('combo').notNull().default(0),
+  bestCombo: integer('best_combo').notNull().default(0),
+  bits: integer('bits').notNull().default(10),
   role: text('role').$type<'user' | 'admin'>().notNull().default('user'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
 })
@@ -82,6 +84,8 @@ export const subjects = pgTable('subjects', {
   name: text('name').notNull(),
   shortName: text('short_name').notNull(),
   color: text('color').notNull().default('emerald'),
+  year: integer('year'),
+  term: integer('term'),
 })
 
 export const exams = pgTable('exams', {
@@ -104,14 +108,18 @@ export const QUESTION_TYPES = [
   'proof_gap',
   'code_output',
   'order',
+  'match',
 ] as const
 export type QuestionType = (typeof QUESTION_TYPES)[number]
+export const SEQUENCE_TYPES: readonly QuestionType[] = ['order', 'match']
 export type QuestionStatus = 'approved' | 'rejected' | 'flagged' | 'pending'
 export type QuestionContext = {
   term?: string
   code?: string
   lines?: string[]
+  left?: string[]
 }
+export type PowerupKind = 'remove_one' | 'remove_two' | 'first_item'
 
 export const questions = pgTable('questions', {
   id: serial('id').primaryKey(),
@@ -124,6 +132,7 @@ export const questions = pgTable('questions', {
   explanation: text('explanation').notNull(),
   difficulty: integer('difficulty').notNull().default(1),
   topic: text('topic'),
+  hint: text('hint'),
   status: text('status').$type<QuestionStatus>().notNull().default('approved'),
   reportCount: integer('report_count').notNull().default(0),
   context: jsonb('context').$type<QuestionContext>(),
@@ -151,8 +160,18 @@ export const answers = pgTable('answers', {
   points: integer('points').notNull().default(0),
   isDaily: boolean('is_daily').notNull().default(false),
   selectedOrder: jsonb('selected_order').$type<number[]>(),
+  hintUsed: boolean('hint_used').notNull().default(false),
   localDate: date('local_date').notNull(),
   answeredAt: timestamp('answered_at').notNull().defaultNow(),
+})
+
+export const questionAssists = pgTable('question_assists', {
+  userId: text('user_id').notNull(),
+  questionId: integer('question_id').notNull(),
+  hintUsed: boolean('hint_used').notNull().default(false),
+  removed: jsonb('removed').$type<number[]>().notNull().default([]),
+  firstRevealed: boolean('first_revealed').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 })
 
 export const dailyQuestions = pgTable('daily_questions', {
